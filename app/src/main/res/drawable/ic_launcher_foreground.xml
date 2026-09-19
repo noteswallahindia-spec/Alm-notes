@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Clean white central badge -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,25 A29,29 0 1,0 54.01,25 Z" />
+    <!-- Blue book icon with spine and pages -->
+    <path
+        android:fillColor="#2B6DEF"
+        android:pathData="M54,42 C51,39.5 45.5,38 38,38 C34,38 32,39 32,39 L32,67 C32,67 34.5,66 38,66 C44.5,66 50,68 54,71 C58,68 63.5,66 70,66 C73.5,66 76,67 76,67 L76,39 C76,39 74,38 70,38 C62.5,38 57,39.5 54,42 Z" />
+    <!-- Book fold highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M53,44 L55,44 L55,69 L53,69 Z" />
+    <path
+        android:fillColor="#1749B3"
+        android:pathData="M40,46 L50,46 L50,48 L40,48 Z M40,51 L48,51 L48,53 L40,53 Z M58,46 L68,46 L68,48 L58,48 Z M58,51 L66,51 L66,53 L58,53 Z" />
+</vector>

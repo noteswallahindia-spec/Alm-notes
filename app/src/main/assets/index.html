@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Notes Wallah - Your Study Partner</title>
+  <meta name="description" content="Education app for Class 9-12 students. Study notes, tests, and learning resources.">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/auth.css">
+
+  <!-- Supabase JS v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-viewport">
+    
+    <!-- 1) SPLASH SCREEN -->
+    <section id="splash-screen" class="screen splash-screen active">
+      <div class="splash-content">
+        <div class="splash-logo-circle">
+          <span>NW</span>
+        </div>
+        <h1 class="splash-title">Notes Wallah</h1>
+        <p class="splash-tagline">Your Study Partner</p>
+        <div class="splash-spinner">
+          <div class="spinner-dot"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) AUTH SCREEN -->
+    <section id="auth-screen" class="screen auth-screen">
+      <div class="auth-header">
+        <div class="brand-badge">
+          <div class="brand-logo-small">NW</div>
+          <span class="brand-name">Notes Wallah</span>
+        </div>
+        <h2 id="auth-main-title" class="auth-title">Welcome back! 👋</h2>
+        <p id="auth-sub-title" class="auth-subtitle">Login to access your Class 10 study materials</p>
+      </div>
+
+      <!-- Segmented Tabs for Login / Sign up -->
+      <div class="auth-tabs">
+        <button type="button" id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">
+          <i class="fa-solid fa-right-to-bracket"></i> Login
+        </button>
+        <button type="button" id="tab-signup" class="tab-btn" onclick="switchAuthTab('signup')">
+          <i class="fa-solid fa-user-plus"></i> Sign Up
+        </button>
+      </div>
+
+      <!-- Alert Notification Banner -->
+      <div id="auth-alert" class="alert-banner hidden">
+        <i class="alert-icon fa-solid fa-circle-info"></i>
+        <span class="alert-msg">Notification message</span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input type="email" id="login-email" placeholder="name@student.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label for="login-password">Password</label>
+            <a href="#" class="forgot-link" onclick="handleForgotPassword(event)">Forgot?</a>
+          </div>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="eye-btn" onclick="togglePasswordVisibility('login-password', this)">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">
+          <span class="btn-text">Login to Account</span>
+          <i class="fa-solid fa-arrow-right btn-icon"></i>
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form hidden" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <div class="input-wrapper">
+            <i class="fa-regular fa-user input-icon"></i>
+            <input type="text" id="signup-name" placeholder="e.g. Aamir Khan" required autocomplete="name">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signup-email">Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input type="email" id="signup-email" placeholder="name@student.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Create Password</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="signup-password" placeholder="Min. 6 characters" minlength="6" required autocomplete="new-password">
+            <button type="button" class="eye-btn" onclick="togglePasswordVisibility('signup-password', this)">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="signup-submit-btn" class="btn btn-primary btn-block">
+          <span class="btn-text">Create Account</span>
+          <i class="fa-solid fa-arrow-right btn-icon"></i>
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <!-- Google OAuth -->
+      <button type="button" class="btn btn-google btn-block" onclick="handleGoogleSignIn()">
+        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <!-- Quick Demo Access / Help Note -->
+      <div class="auth-footer-help">
+        <p class="terms-text">By continuing, you agree to study smart & consistently with Notes Wallah.</p>
+        <button type="button" class="btn-demo-link" onclick="handleDemoLogin()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Try Demo Account
+        </button>
+      </div>
+    </section>
+
+    <!-- 3) ONBOARDING SCREEN (After first login) -->
+    <section id="onboarding-screen" class="screen onboarding-screen">
+      <div class="onboarding-card">
+        <div class="onboarding-header">
+          <div class="step-chip">Step 1 of 1</div>
+          <h2 class="onboarding-title">Set up your profile</h2>
+          <p class="onboarding-subtitle">Personalize your study content according to your class and syllabus.</p>
+        </div>
+
+        <form id="onboarding-form" onsubmit="handleOnboardingSubmit(event)">
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="onboarding-name">Your Full Name</label>
+            <div class="input-wrapper">
+              <i class="fa-regular fa-user input-icon"></i>
+              <input type="text" id="onboarding-name" placeholder="Enter student name" required>
+            </div>
+          </div>
+
+          <!-- Class Selection -->
+          <div class="form-group">
+            <label>Select Your Class</label>
+            <div class="chips-group" id="class-chips">
+              <button type="button" class="chip" data-value="Class 9" onclick="selectClassChip('onboarding', this)">Class 9</button>
+              <button type="button" class="chip active" data-value="Class 10" onclick="selectClassChip('onboarding', this)">Class 10</button>
+              <button type="button" class="chip" data-value="Class 11" onclick="selectClassChip('onboarding', this)">Class 11</button>
+              <button type="button" class="chip" data-value="Class 12" onclick="selectClassChip('onboarding', this)">Class 12</button>
+            </div>
+          </div>
+
+          <!-- Stream Selection (Visible for Class 11/12 only) -->
+          <div class="form-group hidden" id="onboarding-stream-group">
+            <label for="onboarding-stream">Select Stream <span class="text-danger">*</span></label>
+            <div class="select-wrapper">
+              <select id="onboarding-stream" class="form-input form-select">
+                <option value="">-- Choose your stream --</option>
+                <option value="Science">Science (Physics, Chemistry, Maths/Biology, English)</option>
+                <option value="Arts">Arts (History, Pol Science, Geography, English)</option>
+                <option value="Commerce">Commerce (Accountancy, Business Studies, Economics, English)</option>
+              </select>
+            </div>
+            <p class="field-hint"><i class="fa-solid fa-circle-info"></i> Stream selection is required for Senior Secondary syllabus.</p>
+          </div>
+
+          <!-- Board Selection -->
+          <div class="form-group">
+            <label>Select Board</label>
+            <div class="chips-group" id="board-chips">
+              <button type="button" class="chip active" data-value="CBSE" onclick="selectChip('board-chips', this)">CBSE</button>
+              <button type="button" class="chip" data-value="ICSE" onclick="selectChip('board-chips', this)">ICSE</button>
+              <button type="button" class="chip" data-value="State Board" onclick="selectChip('board-chips', this)">State Board</button>
+            </div>
+          </div>
+
+          <!-- Medium Selection -->
+          <div class="form-group">
+            <label>Medium of Instruction</label>
+            <div class="chips-group" id="medium-chips">
+              <button type="button" class="chip active" data-value="English" onclick="selectChip('medium-chips', this)">English</button>
+              <button type="button" class="chip" data-value="Hindi" onclick="selectChip('medium-chips', this)">Hindi</button>
+            </div>
+          </div>
+
+          <button type="submit" id="onboarding-submit-btn" class="btn btn-primary btn-block">
+            <span>Continue to Main App</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 4) MAIN APP SHELL -->
+    <section id="main-app" class="screen main-app">
+      
+      <!-- Scrollable Main View Area -->
+      <main class="main-content-area">
+
+        <!-- 5) HOME TAB -->
+        <section id="tab-content-home" class="tab-page active">
+          <!-- Top App Bar -->
+          <header class="home-header">
+            <div class="user-greeting-meta">
+              <div class="greeting-row">
+                <span id="home-greeting-prefix" class="greeting-prefix">Good Morning,</span>
+                <span id="home-user-name" class="greeting-name">Student</span>
+              </div>
+              <div class="student-info-line">
+                <span id="home-user-badge" class="info-badge">Class 10 · CBSE · English</span>
+              </div>
+            </div>
+            <div class="header-avatar" onclick="switchNavTab('account')" title="View Account">
+              <span id="header-avatar-initials">NW</span>
+            </div>
+          </header>
+
+          <!-- Overall Progress Card -->
+          <div class="card progress-card">
+            <div class="progress-card-top">
+              <div class="progress-info">
+                <span class="progress-label">Syllabus Completion</span>
+                <h3 class="progress-headline">Term 1 Preparation</h3>
+              </div>
+              <div class="progress-percentage-pill">68%</div>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width: 68%;"></div>
+            </div>
+            <div class="progress-card-footer">
+              <span class="progress-subtext"><i class="fa-regular fa-circle-check"></i> 14 of 21 Chapters Completed</span>
+              <span class="progress-tag">On Track</span>
+            </div>
+          </div>
+
+          <!-- Quick Access Action Buttons -->
+          <div class="section-block">
+            <div class="section-header">
+              <h4 class="section-title">Quick Access</h4>
+            </div>
+            <div class="quick-access-grid">
+              <button type="button" class="quick-btn" onclick="switchNavTab('study')">
+                <div class="quick-icon-box blue-grad">
+                  <i class="fa-solid fa-book-open"></i>
+                </div>
+                <span class="quick-btn-label">Notes</span>
+              </button>
+
+              <button type="button" class="quick-btn" onclick="switchNavTab('test')">
+                <div class="quick-icon-box orange-grad">
+                  <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <span class="quick-btn-label">Test</span>
+              </button>
+
+              <button type="button" class="quick-btn" onclick="switchNavTab('shop')">
+                <div class="quick-icon-box purple-grad">
+                  <i class="fa-solid fa-bag-shopping"></i>
+                </div>
+                <span class="quick-btn-label">Shop</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Recommended Notes Section -->
+          <div class="section-block">
+            <div class="section-header">
+              <h4 class="section-title">Recommended Notes</h4>
+              <span class="section-action" onclick="switchNavTab('study')">View All</span>
+            </div>
+
+            <div class="recommended-list">
+              <!-- Note Card 1 -->
+              <article class="card note-card" onclick="handleOpenNote('Chemical Reactions & Equations')">
+                <div class="note-subject-pill pill-science">Science</div>
+                <h5 class="note-title">Chemical Reactions & Equations</h5>
+                <p class="note-subtitle">Complete NCERT summary with balanced equation formulas</p>
+                <div class="note-meta-row">
+                  <span class="meta-item"><i class="fa-regular fa-file-pdf"></i> 18 Pages</span>
+                  <span class="meta-item"><i class="fa-regular fa-star"></i> 4.9</span>
+                  <span class="note-type-tag">Free PDF</span>
+                </div>
+              </article>
+
+              <!-- Note Card 2 -->
+              <article class="card note-card" onclick="handleOpenNote('Real Numbers & Polynomials')">
+                <div class="note-subject-pill pill-math">Mathematics</div>
+                <h5 class="note-title">Real Numbers & Polynomials</h5>
+                <p class="note-subtitle">Step-by-step theorem proofs and high-frequency exam questions</p>
+                <div class="note-meta-row">
+                  <span class="meta-item"><i class="fa-regular fa-file-pdf"></i> 24 Pages</span>
+                  <span class="meta-item"><i class="fa-regular fa-star"></i> 4.8</span>
+                  <span class="note-type-tag">Handwritten</span>
+                </div>
+              </article>
+
+              <!-- Note Card 3 -->
+              <article class="card note-card" onclick="handleOpenNote('Federalism & Power Sharing')">
+                <div class="note-subject-pill pill-social">Social Science</div>
+                <h5 class="note-title">Federalism & Power Sharing</h5>
+                <p class="note-subtitle">Mindmaps, key definitions, and quick revision flowcharts</p>
+                <div class="note-meta-row">
+                  <span class="meta-item"><i class="fa-regular fa-file-pdf"></i> 15 Pages</span>
+                  <span class="meta-item"><i class="fa-regular fa-star"></i> 4.9</span>
+                  <span class="note-type-tag">Revision Notes</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6) STUDY TAB (Part 2: Full Study Flow) -->
+        <section id="tab-content-study" class="tab-page">
+          <div class="study-container">
+
+            <!-- 6.1) SUBJECTS SCREEN -->
+            <div id="study-view-subjects" class="study-sub-view active">
+              <!-- Header -->
+              <div class="study-header">
+                <div>
+                  <h2 class="study-title">My Subjects</h2>
+                  <p id="study-screen-subtitle" class="study-subtitle">Class 10 CBSE · Curriculum Notes & Books</p>
+                </div>
+                <div class="study-header-badge">
+                  <i class="fa-solid fa-graduation-cap"></i>
+                  <span>Term 1</span>
+                </div>
+              </div>
+
+              <!-- 2-column Grid of Subjects -->
+              <div id="study-subjects-grid" class="study-subjects-grid">
+                <!-- Injected dynamically by study.js -->
+              </div>
+            </div>
+
+            <!-- 6.2) CHAPTERS SCREEN -->
+            <div id="study-view-chapters" class="study-sub-view">
+              <!-- Sticky Sub-Header with Back Button -->
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="backToSubjects()" aria-label="Back to Subjects">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 id="chapters-subject-title" class="sub-nav-title">Mathematics</h3>
+                  <span id="chapters-subject-badge" class="sub-nav-caption">Class 10 · MATH-10</span>
+                </div>
+                <div id="chapters-subject-icon" class="chapters-header-icon">
+                  <i class="fa-solid fa-calculator"></i>
+                </div>
+              </div>
+
+              <!-- Subject Curriculum Progress Card -->
+              <div class="card curriculum-progress-card">
+                <div class="curriculum-meta-row">
+                  <span class="curriculum-label">Curriculum Progress</span>
+                  <span id="chapters-progress-percent" class="curriculum-percent">43%</span>
+                </div>
+                <div class="progress-bar-track small">
+                  <div id="chapters-progress-fill" class="progress-bar-fill" style="width: 43%;"></div>
+                </div>
+                <div class="curriculum-footer">
+                  <span id="chapters-progress-text" class="curriculum-count"><i class="fa-regular fa-circle-check"></i> 6 of 14 Completed</span>
+                  <span class="curriculum-status-pill">Active</span>
+                </div>
+              </div>
+
+              <!-- Chapters Section Header -->
+              <div class="chapters-list-header">
+                <h4 class="chapters-heading">Syllabus Chapters</h4>
+                <span class="chapters-sub">Tap to view notes & textbook</span>
+              </div>
+
+              <!-- Chapters List -->
+              <div id="chapters-list-container" class="chapters-list">
+                <!-- Injected dynamically by study.js -->
+              </div>
+            </div>
+
+            <!-- 6.3) CHAPTER DETAIL SCREEN -->
+            <div id="study-view-detail" class="study-sub-view">
+              <!-- Header with Back Button to Chapters -->
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="backToChapters()" aria-label="Back to Chapters">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <span id="detail-subject-breadcrumb" class="sub-nav-caption">Mathematics · Chapter 1</span>
+                  <h3 id="detail-chapter-title" class="sub-nav-title">Real Numbers</h3>
+                </div>
+                <span id="detail-chapter-number" class="detail-number-pill">Ch 1</span>
+              </div>
+
+              <!-- Chapter Overview Hero Card -->
+              <div class="card chapter-detail-hero">
+                <div class="detail-status-row">
+                  <span id="detail-status-chip" class="chapter-status-chip status-completed">
+                    <i class="fa-solid fa-circle-check"></i> Completed
+                  </span>
+                  <span class="detail-ncert-tag">NCERT Syllabus</span>
+                </div>
+                <h4 class="detail-hero-heading">Chapter Overview</h4>
+                <p id="detail-chapter-desc" class="detail-hero-desc">
+                  Explore Fundamental Theorem of Arithmetic, irrational proofs for √2 and √3, and decimal representations.
+                </p>
+
+                <!-- Metadata Row (Pages & Read Time) -->
+                <div class="detail-stats-grid">
+                  <div class="stat-box">
+                    <i class="fa-regular fa-file-lines stat-icon"></i>
+                    <div class="stat-info">
+                      <span id="detail-meta-pages" class="stat-val">18 Pages</span>
+                      <span class="stat-lbl">NCERT Book</span>
+                    </div>
+                  </div>
+                  <div class="stat-box">
+                    <i class="fa-regular fa-clock stat-icon"></i>
+                    <div class="stat-info">
+                      <span id="detail-meta-time" class="stat-val">25 mins</span>
+                      <span class="stat-lbl">Est. Reading</span>
+                    </div>
+                  </div>
+                  <div class="stat-box">
+                    <i class="fa-regular fa-star stat-icon"></i>
+                    <div class="stat-info">
+                      <span class="stat-val">4.9 / 5</span>
+                      <span class="stat-lbl">Student Rating</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Key Concepts / Highlights -->
+              <div class="section-block" style="padding-left: 0; padding-right: 0;">
+                <div class="section-header">
+                  <h4 class="section-title">Core Syllabus Topics</h4>
+                </div>
+                <ul id="detail-highlights-list" class="highlights-list">
+                  <!-- Injected by study.js -->
+                </ul>
+              </div>
+
+              <!-- Two Clear Action Buttons (Read / Pro Notes) -->
+              <div class="chapter-actions-card">
+                <button type="button" id="detail-read-btn" class="btn btn-primary btn-block btn-study-action">
+                  <i class="fa-solid fa-book-open"></i>
+                  <span>Read</span>
+                </button>
+                <button type="button" id="detail-pro-btn" class="btn btn-secondary-outline btn-block btn-study-action">
+                  <i class="fa-solid fa-file-lines"></i>
+                  <span>Pro Notes</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 7) TEST TAB (Part 3: Complete Test & MCQ Module) -->
+        <section id="tab-content-test" class="tab-page">
+          <div class="test-container">
+
+            <!-- 1) TEST HOME VIEW -->
+            <div id="test-view-home" class="test-sub-view active">
+              <!-- Top Test Header -->
+              <div class="test-header">
+                <div>
+                  <h3 class="test-home-title">Test Zone</h3>
+                  <p class="test-home-subtitle">Practice chapter-wise MCQs</p>
+                </div>
+                <div class="test-header-badge">
+                  <i class="fa-solid fa-bolt"></i>
+                  <span>CBSE Class 10</span>
+                </div>
+              </div>
+
+              <!-- Subject Filter Chips -->
+              <div class="test-filter-row">
+                <button type="button" class="test-filter-chip active" data-filter="all" onclick="filterTests('all')">All Tests</button>
+                <button type="button" class="test-filter-chip" data-filter="science" onclick="filterTests('science')">Science</button>
+                <button type="button" class="test-filter-chip" data-filter="mathematics" onclick="filterTests('mathematics')">Mathematics</button>
+              </div>
+
+              <!-- Recent Result Banner (Injected if available) -->
+              <div id="test-recent-banner" class="test-recent-wrapper hidden"></div>
+
+              <!-- Available Tests Header -->
+              <div class="section-header" style="padding: 12px 20px 8px 20px;">
+                <h4 class="section-title">Available Mock Tests</h4>
+                <span class="test-count-badge">4 Tests</span>
+              </div>
+
+              <!-- Test Cards List -->
+              <div id="test-cards-list" class="test-cards-grid">
+                <!-- Injected dynamically by test.js -->
+              </div>
+            </div>
+
+            <!-- 2) LIVE MCQ / TEST SCREEN -->
+            <div id="test-view-live" class="test-sub-view">
+              <!-- Sticky Live Header -->
+              <div class="live-test-header">
+                <button type="button" class="btn-live-quit" onclick="handleQuitLiveTest()" title="Quit Test">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="live-title-group">
+                  <h4 id="live-test-title" class="live-test-title">Science · Life Processes</h4>
+                  <span id="live-q-counter" class="live-q-counter">Q 1 of 10</span>
+                </div>
+                <div id="live-test-timer-badge" class="live-timer-badge">
+                  <i class="fa-regular fa-clock"></i>
+                  <span id="live-test-timer-text">15:00</span>
+                </div>
+              </div>
+
+              <!-- Question Jump Strip -->
+              <div class="live-strip-wrapper">
+                <div id="live-q-strip" class="live-q-strip">
+                  <!-- Injected dynamically by test.js -->
+                </div>
+              </div>
+
+              <!-- Question Content Area -->
+              <div class="live-question-box">
+                <div class="card live-question-card">
+                  <div class="q-header-row">
+                    <span class="q-badge-circle" id="live-q-badge">1</span>
+                    <span class="q-type-tag">Multiple Choice · 1 Mark</span>
+                  </div>
+                  <h4 id="live-q-text" class="live-question-text">
+                    Which process is responsible for exchange of gases in leaves?
+                  </h4>
+                </div>
+
+                <!-- 4 Options Cards -->
+                <div id="live-options-container" class="live-options-list">
+                  <!-- Injected dynamically by test.js -->
+                </div>
+              </div>
+
+              <!-- Bottom Sticky Actions -->
+              <div class="live-bottom-bar">
+                <button type="button" id="live-prev-btn" class="btn btn-live-nav" onclick="prevQuestion()" disabled>
+                  <i class="fa-solid fa-arrow-left"></i>
+                  <span>Previous</span>
+                </button>
+                <button type="button" id="live-next-btn" class="btn btn-primary btn-live-nav" onclick="nextQuestion()">
+                  <span>Next</span>
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button type="button" id="live-submit-btn" class="btn btn-primary btn-live-submit hidden" onclick="handleTestSubmitClick()">
+                  <i class="fa-solid fa-check"></i>
+                  <span>Submit Test</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3) RESULT SCREEN -->
+            <div id="test-view-result" class="test-sub-view">
+              <!-- Result Top Navigation -->
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="returnToTestHome()" title="Back to Tests">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">Test Scorecard</h3>
+                  <span id="result-test-title" class="sub-nav-caption">Science · Life Processes</span>
+                </div>
+              </div>
+
+              <!-- Top Summary Hero Card -->
+              <div class="card result-hero-card">
+                <div class="result-score-ring">
+                  <span id="result-pct-value" class="result-pct-num">80%</span>
+                  <span class="result-pct-lbl">Final Score</span>
+                </div>
+                <div id="result-status-badge" class="result-status-badge status-excellent">
+                  Outstanding Performance! 🌟
+                </div>
+                <p id="result-feedback-message" class="result-feedback-text">
+                  Exceptional grasp of concepts! You are well-prepared for CBSE board examinations on this topic.
+                </p>
+
+                <!-- Metrics Grid: Correct / Wrong / Skipped / Time -->
+                <div class="result-metrics-grid">
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-green"><i class="fa-solid fa-check"></i></div>
+                    <span id="result-metric-correct" class="metric-val">8</span>
+                    <span class="metric-lbl">Correct</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-red"><i class="fa-solid fa-xmark"></i></div>
+                    <span id="result-metric-wrong" class="metric-val">1</span>
+                    <span class="metric-lbl">Wrong</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-gray"><i class="fa-regular fa-circle-pause"></i></div>
+                    <span id="result-metric-skipped" class="metric-val">1</span>
+                    <span class="metric-lbl">Skipped</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-blue"><i class="fa-regular fa-clock"></i></div>
+                    <span id="result-metric-time" class="metric-val">6m 30s</span>
+                    <span class="metric-lbl">Time Taken</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons Card -->
+              <div class="result-actions-card">
+                <button type="button" class="btn btn-primary btn-block btn-result-act" onclick="retakeCurrentTest()">
+                  <i class="fa-solid fa-rotate-right"></i>
+                  <span>Retake Test</span>
+                </button>
+                <button type="button" class="btn btn-secondary-outline btn-block btn-result-act" onclick="returnToTestHome()">
+                  <i class="fa-solid fa-arrow-left"></i>
+                  <span>Back to Test Zone</span>
+                </button>
+              </div>
+
+              <!-- Question Review Section -->
+              <div class="section-block">
+                <div class="section-header">
+                  <h4 class="section-title">Detailed Question Review</h4>
+                  <span class="section-action" onclick="document.getElementById('result-review-list').scrollIntoView({ behavior: 'smooth' })">All Questions</span>
+                </div>
+                <div id="result-review-list" class="review-questions-list">
+                  <!-- Injected dynamically by test.js -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 8) CHALLENGES TAB (Part 4: Challenges Module) -->
+        <section id="tab-content-challenges" class="tab-page">
+          <div class="chal-container">
+
+            <!-- 1) CHALLENGES HOME VIEW -->
+            <div id="chal-view-home" class="chal-sub-view active">
+              <!-- Top Challenges Header -->
+              <div class="chal-header">
+                <div>
+                  <h3 class="chal-home-title">Challenges</h3>
+                  <p class="chal-home-subtitle">Daily practice · Climb the rank</p>
+                </div>
+                <div class="chal-header-badge">
+                  <i class="fa-solid fa-trophy"></i>
+                  <span>Class 10</span>
+                </div>
+              </div>
+
+              <!-- Top Rank Strip -->
+              <div class="chal-rank-strip-wrapper">
+                <div class="card chal-rank-card">
+                  <div class="rank-card-left">
+                    <div class="rank-avatar">
+                      <span id="chal-student-avatar">NW</span>
+                    </div>
+                    <div class="rank-user-meta">
+                      <span id="chal-student-name" class="rank-user-name">Student</span>
+                      <span class="rank-badge-text"><i class="fa-solid fa-award"></i> Rank 24 of 1,248</span>
+                    </div>
+                  </div>
+                  <div class="rank-card-right">
+                    <div class="rank-accuracy-pill">
+                      <span class="acc-val">92%</span>
+                      <span class="acc-lbl">Accuracy</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2) DAILY CHALLENGE CARD -->
+              <div class="chal-section-block">
+                <div class="chal-section-header">
+                  <h4 class="section-title">Today's Daily Sprint</h4>
+                  <span class="chal-live-tag"><i class="fa-solid fa-circle"></i> Active</span>
+                </div>
+                <div id="chal-daily-card-container">
+                  <!-- Injected by challenges.js -->
+                </div>
+              </div>
+
+              <!-- 3) WEEKLY CHALLENGE CARD -->
+              <div class="chal-section-block">
+                <div class="chal-section-header">
+                  <h4 class="section-title">Weekly Target</h4>
+                </div>
+                <div id="chal-weekly-card-container">
+                  <!-- Injected by challenges.js -->
+                </div>
+              </div>
+
+              <!-- 4) MORE CHALLENGES LIST -->
+              <div class="chal-section-block" style="margin-bottom: 24px;">
+                <div class="chal-section-header">
+                  <h4 class="section-title">More Practice Sprints</h4>
+                  <span class="test-count-badge">3 Sprints</span>
+                </div>
+                <div id="chal-more-list" class="chal-cards-grid">
+                  <!-- Injected by challenges.js -->
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 2) LIVE CHALLENGE SCREEN -->
+            <div id="chal-view-live" class="chal-sub-view">
+              <!-- Sticky Live Header -->
+              <div class="live-test-header">
+                <button type="button" class="btn-live-quit" onclick="handleQuitLiveChallenge()" title="Quit Challenge">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="live-title-group">
+                  <h4 id="live-chal-title" class="live-test-title">Science Sprint</h4>
+                  <span id="live-chal-q-counter" class="live-q-counter">Q 1 of 5</span>
+                </div>
+                <div id="live-chal-timer-badge" class="live-timer-badge">
+                  <i class="fa-regular fa-clock"></i>
+                  <span id="live-chal-timer-text">05:00</span>
+                </div>
+              </div>
+
+              <!-- Question Jump Strip -->
+              <div class="live-strip-wrapper">
+                <div id="live-chal-q-strip" class="live-q-strip">
+                  <!-- Injected dynamically -->
+                </div>
+              </div>
+
+              <!-- Question Content Box -->
+              <div class="live-question-box">
+                <div class="card live-question-card">
+                  <div class="q-header-row">
+                    <span class="q-badge-circle" id="live-chal-q-badge">1</span>
+                    <span class="q-type-tag">Daily Sprint MCQ</span>
+                  </div>
+                  <h4 id="live-chal-q-text" class="live-question-text">
+                    Question text will appear here...
+                  </h4>
+                </div>
+
+                <div id="live-chal-options-container" class="live-options-list">
+                  <!-- Options injected dynamically -->
+                </div>
+              </div>
+
+              <!-- Bottom Sticky Navigation Bar -->
+              <div class="live-bottom-bar">
+                <button type="button" id="chal-prev-btn" class="btn btn-live-nav" onclick="prevChallengeQuestion()" disabled>
+                  <i class="fa-solid fa-arrow-left"></i>
+                  <span>Previous</span>
+                </button>
+                <button type="button" id="chal-next-btn" class="btn btn-primary btn-live-nav" onclick="nextChallengeQuestion()">
+                  <span>Next</span>
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button type="button" id="chal-submit-btn" class="btn btn-primary btn-live-submit hidden" onclick="handleChallengeSubmitClick()">
+                  <i class="fa-solid fa-check"></i>
+                  <span>Finish Challenge</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3) CHALLENGE RESULT SCREEN -->
+            <div id="chal-view-result" class="chal-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="returnToChallengesHome()" title="Back to Challenges">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">Challenge Summary</h3>
+                  <span id="chal-result-title" class="sub-nav-caption">Science Sprint</span>
+                </div>
+              </div>
+
+              <!-- Score Hero Card -->
+              <div class="card result-hero-card">
+                <div class="result-score-ring">
+                  <span id="chal-result-score-val" class="result-pct-num">5 / 5</span>
+                  <span class="result-pct-lbl">Final Score</span>
+                </div>
+                <div id="chal-result-pct-badge" class="result-status-badge status-excellent">
+                  100% Accuracy
+                </div>
+                <p id="chal-result-message" class="result-feedback-text">
+                  Awesome sprint! You nailed this daily practice challenge.
+                </p>
+
+                <!-- 4 Metrics Grid -->
+                <div class="result-metrics-grid">
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-green"><i class="fa-solid fa-check"></i></div>
+                    <span id="chal-metric-correct" class="metric-val">5</span>
+                    <span class="metric-lbl">Correct</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-red"><i class="fa-solid fa-xmark"></i></div>
+                    <span id="chal-metric-wrong" class="metric-val">0</span>
+                    <span class="metric-lbl">Wrong</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-gray"><i class="fa-regular fa-circle-pause"></i></div>
+                    <span id="chal-metric-skipped" class="metric-val">0</span>
+                    <span class="metric-lbl">Skipped</span>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-icon-box metric-blue"><i class="fa-regular fa-clock"></i></div>
+                    <span id="chal-metric-time" class="metric-val">2m 45s</span>
+                    <span class="metric-lbl">Time</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="result-actions-card">
+                <button type="button" class="btn btn-primary btn-block btn-result-act" onclick="retakeCurrentChallenge()">
+                  <i class="fa-solid fa-rotate-right"></i>
+                  <span>Retake Sprint</span>
+                </button>
+                <button type="button" class="btn btn-secondary-outline btn-block btn-result-act" onclick="returnToChallengesHome()">
+                  <i class="fa-solid fa-arrow-left"></i>
+                  <span>Back to Challenges</span>
+                </button>
+              </div>
+
+              <!-- Review Questions -->
+              <div class="section-block">
+                <div class="section-header">
+                  <h4 class="section-title">Sprint Review</h4>
+                </div>
+                <div id="chal-review-list" class="review-questions-list">
+                  <!-- Injected dynamically -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 9) SHOP TAB (Part 5: User Shop UI) -->
+        <section id="tab-content-shop" class="tab-page">
+          <div class="shop-container">
+
+            <!-- 1) SHOP HOME VIEW -->
+            <div id="shop-view-home" class="shop-sub-view active">
+              <!-- Top Banner Slider / Default Hero -->
+              <div class="shop-hero-wrapper">
+                <!-- Live Banner Slider (Shown when active shop_banners exist) -->
+                <div id="shop-banner-slider-container" class="shop-banner-slider-container hidden">
+                  <div id="shop-banner-slider-track" class="shop-banner-slider-track">
+                    <!-- Slides injected dynamically by shop.js -->
+                  </div>
+                  <!-- Admin shortcut pill on slider -->
+                  <button type="button" id="shop-admin-slider-pill" class="btn-shop-admin-pill slider-admin-pill hidden" onclick="openShopAdminDashboard()" title="Access Shop Admin">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Admin</span>
+                  </button>
+                  <!-- Dots Indicator -->
+                  <div id="shop-banner-dots" class="shop-banner-dots">
+                    <!-- Injected by shop.js -->
+                  </div>
+                </div>
+
+                <!-- Fallback Default Hero (Shown if no active banners) -->
+                <div id="shop-default-hero" class="card shop-hero-card">
+                  <div class="shop-hero-top-row">
+                    <div class="shop-hero-tag">
+                      <i class="fa-solid fa-bag-shopping"></i>
+                      <span>Notes Wallah Shop</span>
+                    </div>
+                    <button type="button" id="shop-admin-hero-pill" class="btn-shop-admin-pill hidden" onclick="openShopAdminDashboard()" title="Access Shop Admin">
+                      <i class="fa-solid fa-shield-halved"></i>
+                      <span>Admin Panel</span>
+                    </button>
+                  </div>
+                  <h3 class="shop-hero-title">Study Smart · Shop Smart</h3>
+                  <p class="shop-hero-subtitle">Books · T-Shirts · Cups & Mugs · Stationery · Accessories</p>
+                  <div class="shop-hero-badge-row">
+                    <span class="hero-sub-pill"><i class="fa-solid fa-truck-fast"></i> Marketplace Direct</span>
+                    <span class="hero-sub-pill"><i class="fa-solid fa-shield-halved"></i> 100% Genuine</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Automatic Sale Strip (Festival or Sunday Sale) -->
+              <div id="shop-sale-strip" class="shop-sale-strip hidden">
+                <div class="sale-strip-content">
+                  <div class="sale-strip-icon-box">
+                    <i class="fa-solid fa-bolt-lightning"></i>
+                  </div>
+                  <div class="sale-strip-text-box">
+                    <div class="sale-title-row">
+                      <span id="shop-sale-title" class="sale-strip-title">Sunday Special Sale</span>
+                      <span class="sale-live-badge"><i class="fa-solid fa-circle-dot"></i> Live Now</span>
+                    </div>
+                    <span id="shop-sale-subtitle" class="sale-strip-subtitle">Curated student packs & direct marketplace links</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search Bar -->
+              <div class="shop-search-wrapper">
+                <div class="search-input-box">
+                  <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                  <input 
+                    type="text" 
+                    id="shop-search-input" 
+                    class="form-input shop-search-field" 
+                    placeholder="Search books, stationery, gear..." 
+                    oninput="handleShopSearch(this.value)"
+                  />
+                </div>
+              </div>
+
+              <!-- Categories Icon Pills Row -->
+              <div class="shop-categories-wrapper">
+                <div id="shop-categories-row" class="shop-cat-row">
+                  <!-- Injected by shop.js -->
+                </div>
+              </div>
+
+              <!-- Featured / All Products Section -->
+              <div class="shop-section-block">
+                <div class="shop-section-header">
+                  <h4 class="section-title">Student Collection</h4>
+                  <span id="shop-products-count" class="test-count-badge">8 Items</span>
+                </div>
+                <div id="shop-products-grid" class="shop-products-grid">
+                  <!-- 2-column product cards injected by shop.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 2) PRODUCT DETAIL VIEW -->
+            <div id="shop-view-detail" class="shop-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="closeProductDetail()" title="Back to Shop">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">Product Details</h3>
+                  <span class="sub-nav-caption">Notes Wallah Curated Gear</span>
+                </div>
+              </div>
+
+              <div class="product-detail-content">
+                <!-- Large Image / Icon Hero Box -->
+                <div class="card detail-visual-card">
+                  <div id="detail-featured-badge" class="product-featured-badge hidden">
+                    <i class="fa-solid fa-star"></i> Featured
+                  </div>
+                  <div id="detail-product-icon-wrap" class="detail-icon-large">
+                    <i id="detail-product-icon" class="fa-solid fa-book-bookmark"></i>
+                  </div>
+                </div>
+
+                <!-- Product Info Box -->
+                <div class="card detail-info-card">
+                  <div class="detail-cat-badge">
+                    <span id="detail-product-category">Books & Notes</span>
+                  </div>
+                  <h2 id="detail-product-name" class="detail-name">Product Name</h2>
+                  <p id="detail-product-desc" class="detail-desc">
+                    Product detailed description and features...
+                  </p>
+                </div>
+
+                <!-- Available On Marketplace Referral Block -->
+                <div class="detail-marketplace-block">
+                  <div class="mkt-header">
+                    <h4 class="mkt-block-title">Available On</h4>
+                    <p class="mkt-block-subtitle">Choose your preferred marketplace to order</p>
+                  </div>
+                  <div id="detail-marketplace-buttons" class="detail-mkt-buttons-list">
+                    <!-- Branded large buttons injected dynamically -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3) SHOP ADMIN DASHBOARD VIEW -->
+            <div id="shop-view-admin-dashboard" class="shop-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="closeShopAdmin()" title="Back to Shop">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">Shop Admin Console</h3>
+                  <span class="sub-nav-caption">Product Catalog & Supabase Storage</span>
+                </div>
+                <div class="admin-badge-pill">
+                  <i class="fa-solid fa-shield-halved"></i> Admin
+                </div>
+              </div>
+
+              <div class="admin-dashboard-content">
+                <!-- Metrics Stats Row -->
+                <div class="admin-metrics-grid">
+                  <div class="card admin-metric-card">
+                    <span class="metric-label">Total Items</span>
+                    <span id="admin-metric-total" class="metric-number">--</span>
+                    <span class="metric-sub">Catalog Products</span>
+                  </div>
+                  <div class="card admin-metric-card highlight-green">
+                    <span class="metric-label">Active</span>
+                    <span id="admin-metric-active" class="metric-number">--</span>
+                    <span class="metric-sub">Live in Shop</span>
+                  </div>
+                  <div class="card admin-metric-card highlight-orange">
+                    <span class="metric-label">Pinned</span>
+                    <span id="admin-metric-pinned" class="metric-number">--</span>
+                    <span class="metric-sub">Top priority</span>
+                  </div>
+                </div>
+
+                <!-- Admin Action Buttons -->
+                <div class="admin-actions-block">
+                  <button type="button" class="btn btn-primary btn-block admin-action-btn" onclick="openAddProductForm()">
+                    <i class="fa-solid fa-circle-plus"></i>
+                    <span>Add New Product</span>
+                  </button>
+
+                  <div class="admin-action-row">
+                    <button type="button" class="btn btn-secondary-outline btn-block admin-sub-btn" onclick="openAdminProductsList()">
+                      <i class="fa-solid fa-boxes-stacked"></i>
+                      <span>All Products (<span id="admin-btn-product-count">0</span>)</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary-outline btn-block admin-sub-btn" onclick="openAdminBanners()">
+                      <i class="fa-solid fa-images"></i>
+                      <span>Banners</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Quick Catalog Section -->
+                <div class="admin-section-wrap">
+                  <div class="admin-section-header">
+                    <h4 class="section-title">Catalog Overview</h4>
+                    <button type="button" class="btn-link" onclick="openAdminProductsList()">Manage All</button>
+                  </div>
+                  <div id="admin-recent-products-list" class="admin-recent-list">
+                    <!-- Injected by shop.js -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4) SHOP ADMIN ALL PRODUCTS LIST VIEW -->
+            <div id="shop-view-admin-products" class="shop-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="openShopAdminDashboard()" title="Back to Dashboard">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">All Products</h3>
+                  <span class="sub-nav-caption">Supabase Live Database</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm-action" onclick="openAddProductForm()">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>Add</span>
+                </button>
+              </div>
+
+              <div class="admin-products-content">
+                <!-- Search Box -->
+                <div class="search-input-box admin-search-box">
+                  <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                  <input 
+                    type="text" 
+                    id="admin-product-search-input" 
+                    class="form-input shop-search-field" 
+                    placeholder="Search catalog by name or category..." 
+                    oninput="handleAdminProductSearch(this.value)"
+                  />
+                </div>
+
+                <!-- Category Filters Row -->
+                <div id="admin-category-filter-row" class="shop-cat-row admin-cat-row">
+                  <!-- Injected by shop.js -->
+                </div>
+
+                <!-- Product Items List -->
+                <div id="admin-products-full-list" class="admin-products-vertical-list">
+                  <!-- Injected by shop.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 5) SHOP ADMIN ADD / EDIT PRODUCT FORM -->
+            <div id="shop-view-admin-form" class="shop-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="openAdminProductsList()" title="Back to List">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 id="admin-form-title" class="sub-nav-title">Add New Product</h3>
+                  <span class="sub-nav-caption">Product Details & Marketplace Links</span>
+                </div>
+              </div>
+
+              <div class="admin-form-content">
+                <form id="admin-product-form" onsubmit="handleSaveProduct(event)">
+                  <input type="hidden" id="prod-form-id" value="" />
+
+                  <!-- Basic Information -->
+                  <div class="card form-section-card">
+                    <h4 class="form-section-title"><i class="fa-solid fa-circle-info"></i> Basic Information</h4>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-name">Product Name *</label>
+                      <input 
+                        type="text" 
+                        id="prod-form-name" 
+                        class="form-input" 
+                        placeholder="e.g. NCERT Science Class 10 Notes" 
+                        required 
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-category">Category *</label>
+                      <select id="prod-form-category" class="form-input" required>
+                        <option value="books">Books & Notes</option>
+                        <option value="tshirts">T-Shirts & Apparel</option>
+                        <option value="mugs">Cups & Mugs</option>
+                        <option value="stationery">Stationery</option>
+                        <option value="accessories">Accessories</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-desc">Description *</label>
+                      <textarea 
+                        id="prod-form-desc" 
+                        class="form-input form-textarea" 
+                        rows="3" 
+                        placeholder="Chapter-wise concise summary, exam tips, key formulas..." 
+                        required
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Product Image & Supabase Storage -->
+                  <div class="card form-section-card">
+                    <h4 class="form-section-title"><i class="fa-solid fa-image"></i> Product Image</h4>
+                    <p class="form-section-caption">Upload directly to Supabase Storage bucket 'shop' or paste image URL.</p>
+
+                    <div class="image-upload-wrapper">
+                      <!-- Hidden file input -->
+                      <input 
+                        type="file" 
+                        id="prod-form-file-input" 
+                        accept="image/*" 
+                        class="hidden" 
+                        onchange="handleProductImageFileChange(this)"
+                      />
+
+                      <div class="upload-buttons-row">
+                        <button 
+                          type="button" 
+                          id="btn-upload-supabase-storage" 
+                          class="btn btn-secondary-outline btn-block" 
+                          onclick="document.getElementById('prod-form-file-input').click()"
+                        >
+                          <i class="fa-solid fa-cloud-arrow-up"></i>
+                          <span>Upload to Supabase Storage</span>
+                        </button>
+                      </div>
+
+                      <div id="prod-upload-status" class="upload-status-box hidden">
+                        <!-- Progress or success message -->
+                      </div>
+
+                      <div class="form-group" style="margin-top: 10px;">
+                        <label class="form-label" for="prod-form-image-url">Public Image URL</label>
+                        <input 
+                          type="url" 
+                          id="prod-form-image-url" 
+                          class="form-input" 
+                          placeholder="https://... (or auto-filled after upload)" 
+                          oninput="handleImagePreviewInput(this.value)"
+                        />
+                      </div>
+
+                      <div class="image-preview-container">
+                        <label class="form-label">Preview</label>
+                        <div id="prod-form-image-preview" class="prod-image-preview-box">
+                          <div class="preview-empty-state">
+                            <i class="fa-regular fa-image"></i>
+                            <span>No image URL yet</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Marketplace Referral Links -->
+                  <div class="card form-section-card">
+                    <h4 class="form-section-title"><i class="fa-solid fa-link"></i> Marketplace Referral Links</h4>
+                    <p class="form-section-caption">Leave blank if product is not listed on that platform. Button will automatically be hidden.</p>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-flipkart">
+                        <i class="fa-solid fa-bolt" style="color: #2874F0;"></i> Flipkart Product URL
+                      </label>
+                      <input 
+                        type="url" 
+                        id="prod-form-flipkart" 
+                        class="form-input" 
+                        placeholder="https://www.flipkart.com/..." 
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-amazon">
+                        <i class="fa-brands fa-amazon" style="color: #FF9900;"></i> Amazon India URL
+                      </label>
+                      <input 
+                        type="url" 
+                        id="prod-form-amazon" 
+                        class="form-input" 
+                        placeholder="https://www.amazon.in/..." 
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="prod-form-meesho">
+                        <i class="fa-solid fa-bag-shopping" style="color: #843C74;"></i> Meesho URL
+                      </label>
+                      <input 
+                        type="url" 
+                        id="prod-form-meesho" 
+                        class="form-input" 
+                        placeholder="https://www.meesho.com/..." 
+                      />
+                    </div>
+
+                    <div class="form-group-row">
+                      <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="prod-form-other-name">Other Store Name</label>
+                        <input 
+                          type="text" 
+                          id="prod-form-other-name" 
+                          class="form-input" 
+                          placeholder="e.g. Official Store" 
+                        />
+                      </div>
+                      <div class="form-group" style="flex: 1.5;">
+                        <label class="form-label" for="prod-form-other-url">Other Store URL</label>
+                        <input 
+                          type="url" 
+                          id="prod-form-other-url" 
+                          class="form-input" 
+                          placeholder="https://noteswallah.in/..." 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Visibility & Promotion Toggles -->
+                  <div class="card form-section-card">
+                    <h4 class="form-section-title"><i class="fa-solid fa-sliders"></i> Status & Positioning</h4>
+
+                    <!-- Pinned Toggle -->
+                    <div class="admin-toggle-row">
+                      <div class="toggle-text-group">
+                        <span class="toggle-title"><i class="fa-solid fa-thumbtack text-orange"></i> Pin to Top</span>
+                        <span class="toggle-sub">Shows first at the top of the shop grid</span>
+                      </div>
+                      <label class="switch">
+                        <input type="checkbox" id="prod-form-pinned" />
+                        <span class="slider round"></span>
+                      </label>
+                    </div>
+
+                    <!-- Featured Toggle -->
+                    <div class="admin-toggle-row">
+                      <div class="toggle-text-group">
+                        <span class="toggle-title"><i class="fa-solid fa-star text-orange"></i> Featured Badge</span>
+                        <span class="toggle-sub">Highlight with gold star badge</span>
+                      </div>
+                      <label class="switch">
+                        <input type="checkbox" id="prod-form-featured" />
+                        <span class="slider round"></span>
+                      </label>
+                    </div>
+
+                    <!-- Active Toggle -->
+                    <div class="admin-toggle-row">
+                      <div class="toggle-text-group">
+                        <span class="toggle-title"><i class="fa-solid fa-eye text-blue"></i> Active in Shop</span>
+                        <span class="toggle-sub">Visible to students in the public shop</span>
+                      </div>
+                      <label class="switch">
+                        <input type="checkbox" id="prod-form-active" checked />
+                        <span class="slider round"></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Form Action Buttons -->
+                  <div class="form-actions-stack">
+                    <button type="submit" id="prod-form-submit-btn" class="btn btn-primary btn-block">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                      <span>Save Product to Supabase</span>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      id="prod-form-delete-btn" 
+                      class="btn btn-danger-outline btn-block hidden" 
+                      onclick="handleDeleteProduct()"
+                    >
+                      <i class="fa-solid fa-trash-can"></i>
+                      <span>Delete Product</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- 6) SHOP ADMIN BANNERS VIEW -->
+            <div id="shop-view-admin-banners" class="shop-sub-view">
+              <div class="sub-nav-header">
+                <button type="button" class="btn-sub-back" onclick="openShopAdminDashboard()" title="Back to Dashboard">
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="sub-nav-title-group">
+                  <h3 class="sub-nav-title">Shop Banners</h3>
+                  <span class="sub-nav-caption">Top Carousel & Automatic Sale</span>
+                </div>
+              </div>
+
+              <div class="admin-banners-content">
+                <!-- Current Automatic Sale Status Card -->
+                <div class="card admin-sale-status-card">
+                  <div class="sale-status-header">
+                    <div class="sale-status-badge">
+                      <i class="fa-solid fa-bolt-lightning"></i>
+                      <span>Auto Sale Engine</span>
+                    </div>
+                    <span id="admin-sale-status-pill" class="status-chip active">Checking...</span>
+                  </div>
+                  <h4 id="admin-sale-status-title" class="admin-sale-name">Loading status...</h4>
+                  <p id="admin-sale-status-desc" class="admin-sale-sub">
+                    Festivals from app_settings ('shop_sales') take priority over Sunday sales. Normal shop resumes automatically when sales expire.
+                  </p>
+                </div>
+
+                <!-- Add New Banner Card -->
+                <div class="card form-section-card">
+                  <h4 class="form-section-title"><i class="fa-solid fa-circle-plus"></i> Add New Carousel Banner</h4>
+                  <p class="form-section-caption">Upload an image to Supabase Storage bucket 'shop' (path: banners/...) or paste a public URL.</p>
+
+                  <form id="admin-banner-form" onsubmit="handleSaveBanner(event)">
+                    <input 
+                      type="file" 
+                      id="banner-file-input" 
+                      accept="image/*" 
+                      class="hidden" 
+                      onchange="handleBannerImageFileChange(this)"
+                    />
+
+                    <div class="upload-buttons-row">
+                      <button 
+                        type="button" 
+                        id="btn-upload-banner-storage" 
+                        class="btn btn-secondary-outline btn-block" 
+                        onclick="document.getElementById('banner-file-input').click()"
+                      >
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Upload to Supabase Storage</span>
+                      </button>
+                    </div>
+
+                    <div id="banner-upload-status" class="upload-status-box hidden"></div>
+
+                    <div class="form-group" style="margin-top: 10px;">
+                      <label class="form-label" for="banner-form-image-url">Banner Image URL *</label>
+                      <input 
+                        type="url" 
+                        id="banner-form-image-url" 
+                        class="form-input" 
+                        placeholder="https://... (or auto-filled after upload)" 
+                        required 
+                        oninput="handleBannerPreviewInput(this.value)"
+                      />
+                    </div>
+
+                    <div class="image-preview-container">
+                      <label class="form-label">Preview</label>
+                      <div id="banner-form-image-preview" class="prod-image-preview-box banner-preview-box">
+                        <div class="preview-empty-state">
+                          <i class="fa-regular fa-image"></i>
+                          <span>No banner image URL yet</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="banner-form-title">Banner Title / Caption (Optional)</label>
+                      <input 
+                        type="text" 
+                        id="banner-form-title" 
+                        class="form-input" 
+                        placeholder="e.g. Board Exam Special Notes & Books" 
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="banner-form-link-url">Destination / Referral URL (Optional)</label>
+                      <input 
+                        type="url" 
+                        id="banner-form-link-url" 
+                        class="form-input" 
+                        placeholder="https://www.flipkart.com/... or https://www.amazon.in/..." 
+                      />
+                    </div>
+
+                    <div class="form-group-row">
+                      <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="banner-form-order">Sort Order Number *</label>
+                        <input 
+                          type="number" 
+                          id="banner-form-order" 
+                          class="form-input" 
+                          value="1" 
+                          min="1" 
+                          max="999" 
+                          required 
+                        />
+                      </div>
+                      <div class="form-group" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div class="admin-toggle-row" style="border: none; padding: 6px 0;">
+                          <div class="toggle-text-group">
+                            <span class="toggle-title" style="font-size: 12px;">Active</span>
+                          </div>
+                          <label class="switch">
+                            <input type="checkbox" id="banner-form-active" checked />
+                            <span class="slider round"></span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-actions-stack" style="margin-top: 10px;">
+                      <button type="submit" id="banner-form-submit-btn" class="btn btn-primary btn-block">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Add Banner to Carousel</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <!-- Existing Banners List -->
+                <div class="admin-section-wrap">
+                  <div class="admin-section-header">
+                    <h4 class="section-title">Live Carousel Banners</h4>
+                    <span id="admin-banners-count" class="test-count-badge">0 Banners</span>
+                  </div>
+                  <div id="admin-banners-list-container" class="admin-banners-vertical-list">
+                    <!-- Injected by shop.js -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 10) ACCOUNT TAB -->
+        <section id="tab-content-account" class="tab-page">
+          <div class="account-page-inner">
+            <!-- Profile Hero Card -->
+            <div class="card profile-hero-card">
+              <div class="profile-avatar-large">
+                <span id="account-avatar-initials">NW</span>
+              </div>
+              <h3 id="account-user-name" class="account-name">Student Name</h3>
+              <p id="account-user-email" class="account-email">student@example.com</p>
+              <p id="account-user-academic-line" class="account-academic-line">Class 10 · CBSE · English</p>
+              <div class="account-chip-row">
+                <span id="account-class-chip" class="profile-chip">Class 10</span>
+                <span id="account-stream-chip" class="profile-chip profile-stream-chip hidden">Science</span>
+                <span id="account-board-chip" class="profile-chip">CBSE</span>
+                <span id="account-medium-chip" class="profile-chip">English</span>
+              </div>
+            </div>
+
+            <!-- Settings Menu Rows -->
+            <div class="card menu-card">
+              <h4 class="menu-group-title">Preferences</h4>
+              
+              <!-- Dark Mode Toggle -->
+              <div class="menu-row">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box dark-icon">
+                    <i class="fa-solid fa-moon"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title">Dark Mode</span>
+                    <span class="menu-caption">Easier on the eyes during late night study</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <label class="switch">
+                    <input type="checkbox" id="theme-switch" onchange="handleThemeToggle(this)">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Shop Admin (Hidden if not admin) -->
+              <div id="shop-admin-row" class="menu-row hidden" onclick="handleShopAdminClick()">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box admin-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title">Shop Admin</span>
+                    <span class="menu-caption">Manage inventory and orders</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <i class="fa-solid fa-chevron-right menu-arrow"></i>
+                </div>
+              </div>
+
+              <!-- Academic Profile / Settings -->
+              <div class="menu-row" onclick="openAcademicSettingsModal()">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box academic-icon">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title">Academic Profile &amp; Class</span>
+                    <span id="account-menu-academic-sub" class="menu-caption">Class 10 · Update class, stream, or board</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <i class="fa-solid fa-chevron-right menu-arrow"></i>
+                </div>
+              </div>
+
+              <!-- About Notes Wallah -->
+              <div class="menu-row" onclick="showAboutModal()">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box info-icon">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title">About Notes Wallah</span>
+                    <span class="menu-caption">Version 1.0 · Part 1</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <i class="fa-solid fa-chevron-right menu-arrow"></i>
+                </div>
+              </div>
+
+              <!-- Logout Row -->
+              <div class="menu-row logout-row" onclick="handleLogout()">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box logout-icon">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title text-danger">Logout</span>
+                    <span class="menu-caption">End current student session</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <i class="fa-solid fa-chevron-right menu-arrow text-danger"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Version Footer -->
+            <div class="account-footer">
+              <p>Notes Wallah • Education App</p>
+              <p class="sub">Crafted for Class 9–12 Students</p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Fixed Bottom Navigation (6 Tabs) -->
+      <nav class="bottom-nav">
+        <button type="button" class="nav-item active" data-tab="home" onclick="switchNavTab('home')">
+          <i class="nav-icon fa-solid fa-house"></i>
+          <span class="nav-label">Home</span>
+        </button>
+
+        <button type="button" class="nav-item" data-tab="study" onclick="switchNavTab('study')">
+          <i class="nav-icon fa-solid fa-book-open"></i>
+          <span class="nav-label">Study</span>
+        </button>
+
+        <button type="button" class="nav-item" data-tab="test" onclick="switchNavTab('test')">
+          <i class="nav-icon fa-solid fa-clipboard-check"></i>
+          <span class="nav-label">Test</span>
+        </button>
+
+        <button type="button" class="nav-item" data-tab="challenges" onclick="switchNavTab('challenges')">
+          <i class="nav-icon fa-solid fa-trophy"></i>
+          <span class="nav-label">Challenges</span>
+        </button>
+
+        <button type="button" class="nav-item" data-tab="shop" onclick="switchNavTab('shop')">
+          <i class="nav-icon fa-solid fa-bag-shopping"></i>
+          <span class="nav-label">Shop</span>
+        </button>
+
+        <button type="button" class="nav-item" data-tab="account" onclick="switchNavTab('account')">
+          <i class="nav-icon fa-solid fa-user"></i>
+          <span class="nav-label">Account</span>
+        </button>
+      </nav>
+
+    </section>
+
+    <!-- Global Toast Alert -->
+    <div id="global-toast" class="toast-popup hidden">
+      <i id="toast-icon" class="fa-solid fa-circle-check"></i>
+      <span id="toast-message">Notification</span>
+    </div>
+
+    <!-- EBOOK READER MODAL -->
+    <div id="ebook-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeEbookModal()"></div>
+      <div class="modal-sheet ebook-sheet">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span id="ebook-modal-chapter" class="modal-caption">NCERT Class 10 · Chapter 1</span>
+            <h4 id="ebook-modal-title" class="modal-heading">Ebook Reader</h4>
+          </div>
+          <div class="modal-actions-right">
+            <a id="ebook-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-icon-link" title="Open in browser">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+            <button type="button" class="btn-modal-close" onclick="closeEbookModal()" aria-label="Close reader">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="ebook-reader-body">
+          <div class="ebook-info-banner">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Official NCERT Curriculum Reader</span>
+            <a id="ebook-direct-download" href="#" target="_blank" rel="noopener noreferrer" class="banner-link">Open Fullscreen</a>
+          </div>
+          <iframe id="ebook-iframe" class="ebook-frame" src="about:blank" title="Chapter Ebook Viewer"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- PART 8: REWARDED AD GATE MODAL -->
+    <div id="ad-gate-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeAdGateModal()"></div>
+      <div class="modal-sheet ad-gate-sheet">
+        <div class="modal-drag-handle"></div>
+
+        <!-- 1) Loading Interstitial Phase -->
+        <div id="ad-interstitial-loading" class="ad-interstitial-phase">
+          <div class="ad-spinner-circle">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+          </div>
+          <h4 class="ad-interstitial-title">Loading Pro Notes</h4>
+          <p class="ad-interstitial-sub">Please wait a moment</p>
+        </div>
+
+        <!-- 2) Rewarded Ad Card Phase -->
+        <div id="ad-rewarded-phase" class="ad-rewarded-phase hidden">
+          <div class="modal-header pb-0">
+            <div class="ad-sponsor-badge">
+              <i class="fa-solid fa-bullhorn"></i>
+              <span>Sponsor Message</span>
+            </div>
+            <button type="button" class="btn-modal-close" onclick="closeAdGateModal()" aria-label="Close ad">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="ad-body-content">
+            <!-- Sponsor Banner Graphic -->
+            <div class="ad-sponsor-creative">
+              <div class="ad-creative-badge">Student Education Partner</div>
+              <div class="ad-creative-icon">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <h4 class="ad-creative-title">Notes Wallah Support</h4>
+              <p class="ad-creative-tagline">High-yield revision notes, formula cheat sheets & board exam preparation kits.</p>
+            </div>
+
+            <!-- Ad Callout Message -->
+            <div class="ad-message-box">
+              <h4 class="ad-support-heading">Support Notes Wallah</h4>
+              <p class="ad-support-text">Watch a quick 5-second sponsor message to access Pro Notes for this chapter completely free.</p>
+            </div>
+
+            <!-- Timer and Progress Bar -->
+            <div id="ad-progress-wrapper" class="ad-progress-wrapper hidden">
+              <div class="ad-progress-info">
+                <span class="ad-progress-label"><i class="fa-solid fa-clock"></i> Sponsor Message</span>
+                <span id="ad-timer-countdown" class="ad-countdown-text">5s</span>
+              </div>
+              <div class="ad-progress-track">
+                <div id="ad-progress-fill" class="ad-progress-fill"></div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="ad-actions-container">
+              <!-- Initial Watch Button -->
+              <button type="button" id="ad-watch-btn" class="btn btn-primary btn-block btn-ad-main" onclick="startRewardedAdWatch()">
+                <i class="fa-solid fa-play"></i>
+                <span>Watch</span>
+              </button>
+
+              <!-- Progress Running Button (Disabled during ad) -->
+              <button type="button" id="ad-running-btn" class="btn btn-primary btn-block btn-ad-main hidden" disabled>
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span id="ad-running-text">Playing Sponsor Message (5s)...</span>
+              </button>
+
+              <!-- Completed Continue Button -->
+              <button type="button" id="ad-continue-btn" class="btn btn-success-action btn-block btn-ad-main hidden" onclick="onAdContinueClick()">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Continue</span>
+              </button>
+
+              <!-- Optional test skip button for testing/evaluation -->
+              <button type="button" class="btn-skip-test" onclick="simulateAdSkip()">
+                <i class="fa-solid fa-forward"></i>
+                <span>Skip (Test Mode)</span>
+              </button>
+            </div>
+
+            <!-- Ad Failed / Error State (Soft Fallback) -->
+            <div id="ad-error-container" class="ad-error-box hidden">
+              <div class="ad-error-row">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <div>
+                  <h6>Ad Could Not Load</h6>
+                  <p>Network connectivity issue or ad inventory temporarily unavailable.</p>
+                </div>
+              </div>
+              <div class="ad-error-actions">
+                <button type="button" class="btn btn-secondary-outline btn-sm" onclick="retryProNotesAd()">
+                  <i class="fa-solid fa-rotate-right"></i> Retry
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="softFallbackToProNotes()">
+                  <span>Continue to Pro Notes</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PART 8: PRO NOTES VIEWER MODAL -->
+    <div id="pro-notes-viewer-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeProNotesViewer()"></div>
+      <div class="modal-sheet pro-notes-viewer-sheet">
+        <!-- Top Sticky Header -->
+        <div class="viewer-header">
+          <button type="button" class="btn-viewer-back" onclick="closeProNotesViewer()" title="Back to chapter detail">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <div class="viewer-title-group">
+            <span id="pro-notes-subject-code" class="viewer-code-tag">CLASS 10</span>
+            <h4 id="pro-notes-viewer-title" class="viewer-title">Chapter Pro Notes</h4>
+          </div>
+          <button type="button" class="btn-modal-close" onclick="closeProNotesViewer()" aria-label="Close viewer">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Sticky Meta / Actions Strip -->
+        <div class="viewer-action-strip">
+          <div class="pro-unlocked-chip">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Pro Notes Unlocked</span>
+          </div>
+          <a id="pro-notes-external-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-open-full-link hidden">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Open Full Notes</span>
+          </a>
+        </div>
+
+        <!-- Scrollable Pro Notes Body -->
+        <div id="pro-notes-viewer-body" class="viewer-body-scrollable">
+          <!-- Rendered dynamically by study.js -->
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="viewer-footer">
+          <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeProNotesViewer()">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to Chapter Detail</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4) Test Quit Confirmation Modal -->
+    <div id="test-quit-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeQuitModal()"></div>
+      <div class="modal-sheet quit-sheet">
+        <div class="modal-drag-handle"></div>
+        <div class="quit-modal-content">
+          <div class="quit-icon-circle danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h4 class="quit-modal-title">Quit Active Test?</h4>
+          <p class="quit-modal-desc">
+            Your current answers will not be recorded and your test progress will be lost.
+          </p>
+          <div class="quit-actions-row">
+            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeQuitModal()">
+              <span>Resume Test</span>
+            </button>
+            <button type="button" class="btn btn-danger-action btn-block" onclick="confirmQuitTest()">
+              <span>Quit Anyway</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5) Test Submit Warning Confirmation Modal -->
+    <div id="test-submit-confirm-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeSubmitConfirmModal()"></div>
+      <div class="modal-sheet quit-sheet">
+        <div class="modal-drag-handle"></div>
+        <div class="quit-modal-content">
+          <div class="quit-icon-circle warning">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <h4 class="quit-modal-title">Submit Test?</h4>
+          <p id="submit-warning-text" class="quit-modal-desc">
+            You have unattempted questions. Are you sure you want to finalize and submit?
+          </p>
+          <div class="quit-actions-row">
+            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeSubmitConfirmModal()">
+              <span>Review Questions</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-block" onclick="executeSubmitTest(false)">
+              <span>Submit Now</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6) Challenge Quit Confirmation Modal -->
+    <div id="chal-quit-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeChallengeQuitModal()"></div>
+      <div class="modal-sheet quit-sheet">
+        <div class="modal-drag-handle"></div>
+        <div class="quit-modal-content">
+          <div class="quit-icon-circle danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h4 class="quit-modal-title">Quit Challenge?</h4>
+          <p class="quit-modal-desc">
+            Your sprint progress will not be counted towards your daily practice.
+          </p>
+          <div class="quit-actions-row">
+            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeChallengeQuitModal()">
+              <span>Resume Sprint</span>
+            </button>
+            <button type="button" class="btn btn-danger-action btn-block" onclick="confirmQuitChallenge()">
+              <span>Quit Anyway</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7) Challenge Submit Modal -->
+    <div id="chal-submit-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeChallengeSubmitModal()"></div>
+      <div class="modal-sheet quit-sheet">
+        <div class="modal-drag-handle"></div>
+        <div class="quit-modal-content">
+          <div class="quit-icon-circle warning">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <h4 class="quit-modal-title">Finish Sprint?</h4>
+          <p id="chal-submit-warning-text" class="quit-modal-desc">
+            You have unattempted questions. Unanswered questions will be scored as skipped.
+          </p>
+          <div class="quit-actions-row">
+            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeChallengeSubmitModal()">
+              <span>Review</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-block" onclick="executeSubmitChallenge()">
+              <span>Finish Now</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8) Full-Screen Offline Overlay -->
+    <div id="offline-overlay" class="offline-overlay hidden">
+      <div class="offline-modal-card card">
+        <div class="offline-icon-circle">
+          <i class="fa-solid fa-wifi"></i>
+          <span class="offline-slash-pill"><i class="fa-solid fa-slash"></i></span>
+        </div>
+        <h3 class="offline-title">You're offline</h3>
+        <p class="offline-desc">
+          Please check your internet connection to access live features and updates.
+        </p>
+        <div class="offline-notes-badge">
+          <i class="fa-solid fa-book-bookmark"></i>
+          <span>Saved notes & offline books still available</span>
+        </div>
+        <div class="offline-actions-column">
+          <button type="button" id="offline-retry-btn" class="btn btn-primary btn-block" onclick="checkNetworkStatus()">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>Try again</span>
+          </button>
+          <button type="button" class="btn btn-secondary-outline btn-block" onclick="dismissOfflineOverlay()">
+            <span>Continue Offline</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9) ACADEMIC PROFILE SETTINGS MODAL -->
+    <div id="academic-settings-modal" class="app-modal hidden">
+      <div class="modal-backdrop" onclick="closeAcademicSettingsModal()"></div>
+      <div class="modal-sheet academic-settings-sheet">
+        <div class="modal-drag-handle"></div>
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-caption"><i class="fa-solid fa-graduation-cap"></i> Academic Preferences</span>
+            <h4 class="modal-heading">Academic Settings</h4>
+          </div>
+          <button type="button" class="btn-modal-close" onclick="closeAcademicSettingsModal()" aria-label="Close settings">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="academic-settings-form" class="academic-settings-body" onsubmit="handleSettingsSave(event)">
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="settings-name">Student Full Name</label>
+            <div class="input-wrapper">
+              <i class="fa-regular fa-user input-icon"></i>
+              <input type="text" id="settings-name" class="form-input" placeholder="Enter student name" required>
+            </div>
+          </div>
+
+          <!-- Class Selection -->
+          <div class="form-group">
+            <label>Select Your Class</label>
+            <div class="chips-group" id="settings-class-chips">
+              <button type="button" class="chip" data-value="Class 9" onclick="selectClassChip('settings', this)">Class 9</button>
+              <button type="button" class="chip active" data-value="Class 10" onclick="selectClassChip('settings', this)">Class 10</button>
+              <button type="button" class="chip" data-value="Class 11" onclick="selectClassChip('settings', this)">Class 11</button>
+              <button type="button" class="chip" data-value="Class 12" onclick="selectClassChip('settings', this)">Class 12</button>
+            </div>
+          </div>
+
+          <!-- Stream Selection (Visible for Class 11/12 only) -->
+          <div class="form-group hidden" id="settings-stream-group">
+            <label for="settings-stream">Select Stream <span class="text-danger">*</span></label>
+            <div class="select-wrapper">
+              <select id="settings-stream" class="form-input form-select">
+                <option value="">-- Choose your stream --</option>
+                <option value="Science">Science (Physics, Chemistry, Maths/Biology, English)</option>
+                <option value="Arts">Arts (History, Pol Science, Geography, English)</option>
+                <option value="Commerce">Commerce (Accountancy, Business Studies, Economics, English)</option>
+              </select>
+            </div>
+            <p class="field-hint"><i class="fa-solid fa-circle-info"></i> Subject curriculum will automatically update based on your chosen stream.</p>
+          </div>
+
+          <!-- Board Selection -->
+          <div class="form-group">
+            <label>Board Examination</label>
+            <div class="chips-group" id="settings-board-chips">
+              <button type="button" class="chip active" data-value="CBSE" onclick="selectChip('settings-board-chips', this)">CBSE</button>
+              <button type="button" class="chip" data-value="ICSE" onclick="selectChip('settings-board-chips', this)">ICSE</button>
+              <button type="button" class="chip" data-value="State Board" onclick="selectChip('settings-board-chips', this)">State Board</button>
+            </div>
+          </div>
+
+          <!-- Medium Selection -->
+          <div class="form-group">
+            <label>Medium of Study</label>
+            <div class="chips-group" id="settings-medium-chips">
+              <button type="button" class="chip active" data-value="English" onclick="selectChip('settings-medium-chips', this)">English</button>
+              <button type="button" class="chip" data-value="Hindi" onclick="selectChip('settings-medium-chips', this)">Hindi</button>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="settings-actions-footer">
+            <button type="button" class="btn btn-secondary-outline" onclick="closeAcademicSettingsModal()">
+              <span>Cancel</span>
+            </button>
+            <button type="submit" id="settings-save-btn" class="btn btn-primary">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Save &amp; Update Syllabus</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script src="js/supabase.js"></script>
+  <script src="js/study-data.js"></script>
+  <script src="js/study.js"></script>
+  <script src="js/test-data.js"></script>
+  <script src="js/test.js"></script>
+  <script src="js/challenges-data.js"></script>
+  <script src="js/challenges.js"></script>
+  <script src="js/shop-data.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
