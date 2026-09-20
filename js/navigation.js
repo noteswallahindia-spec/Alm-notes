@@ -16,8 +16,12 @@ function showScreen(screenId) {
   screens.forEach(screen => {
     if (screen.id === screenId) {
       screen.classList.add('active');
+      screen.style.display = 'flex';
+      screen.style.pointerEvents = 'auto';
     } else {
       screen.classList.remove('active');
+      screen.style.display = 'none';
+      screen.style.pointerEvents = 'none';
     }
   });
   currentScreen = screenId;

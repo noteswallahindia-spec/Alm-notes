@@ -126,8 +126,8 @@ function handleThemeToggle(checkbox) {
 function initAppSession() {
   let hasResolved = false;
   const splashStartTime = Date.now();
-  const MIN_SPLASH_TIME = 1400; // smooth branding duration
-  const MAX_SPLASH_TIME = 2800; // safety ceiling: never stuck
+  const MIN_SPLASH_TIME = 400; // smooth instant transition
+  const MAX_SPLASH_TIME = 1000; // safety ceiling: never stuck
 
   // Safety hard-timer: NEVER get stuck on splash
   const safetyTimeout = setTimeout(() => {
@@ -137,12 +137,14 @@ function initAppSession() {
     }
   }, MAX_SPLASH_TIME);
 
-  // Absolute hard failsafe: unconditionally hide splash screen after 3.5s
+  // Absolute hard failsafe: unconditionally hide splash screen after 1.5s
   setTimeout(() => {
     const splash = document.getElementById('splash-screen');
     if (splash && splash.classList.contains('active')) {
       console.warn('Notes Wallah: Unconditional failsafe force-dismissed splash screen.');
       splash.classList.remove('active');
+      splash.style.display = 'none';
+      splash.style.pointerEvents = 'none';
       const authScreen = document.getElementById('auth-screen');
       const mainApp = document.getElementById('main-app');
       if (currentUser || localStorage.getItem('nw_local_profile')) {
@@ -151,7 +153,7 @@ function initAppSession() {
         if (authScreen) authScreen.classList.add('active');
       }
     }
-  }, 3500);
+  }, 1500);
 
   // Check Supabase session
   async function checkSession() {

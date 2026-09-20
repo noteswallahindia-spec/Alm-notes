@@ -122,9 +122,16 @@ html, body {
 }
 
 .screen.active {
-  display: flex;
+  display: flex !important;
   opacity: 1;
   z-index: 10;
+  pointer-events: auto;
+}
+
+.screen:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
 }
 
 /* ==========================================================================
@@ -137,6 +144,16 @@ html, body {
   justify-content: center;
   text-align: center;
   z-index: 100;
+  display: none;
+}
+
+.splash-screen.active {
+  display: flex;
+}
+
+.splash-screen:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .splash-content {
@@ -1005,6 +1022,7 @@ input:checked + .slider:before {
 
 .hidden {
   display: none !important;
+  pointer-events: none !important;
 }
 
 /* Global Toast Popup */

@@ -44,6 +44,10 @@ class MainActivity : ComponentActivity() {
       setLayerType(View.LAYER_TYPE_SOFTWARE, null)
       isVerticalScrollBarEnabled = false
       isHorizontalScrollBarEnabled = false
+      isClickable = true
+      isFocusable = true
+      isFocusableInTouchMode = true
+      requestFocus(View.FOCUS_DOWN)
 
       webViewClient = object : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
