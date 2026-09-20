@@ -17,6 +17,7 @@
   <!-- App Styles -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/admin.css">
 
   <!-- Supabase JS v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1547,14 +1548,30 @@
                 </div>
               </div>
 
-              <!-- Shop Admin (Hidden if not admin) -->
-              <div id="shop-admin-row" class="menu-row hidden" onclick="handleShopAdminClick()">
+              <!-- Admin Panel (Visible only for admin) -->
+              <div id="admin-panel-menu-row" class="menu-row hidden" onclick="openAdminPanel()">
                 <div class="menu-row-left">
                   <div class="menu-icon-box admin-icon">
                     <i class="fa-solid fa-shield-halved"></i>
                   </div>
                   <div class="menu-row-text">
-                    <span class="menu-title">Shop Admin</span>
+                    <span class="menu-title">Admin Panel</span>
+                    <span class="menu-caption">Shop, Notes, Ebooks &amp; Tests</span>
+                  </div>
+                </div>
+                <div class="menu-row-right">
+                  <i class="fa-solid fa-chevron-right menu-arrow"></i>
+                </div>
+              </div>
+
+              <!-- Shop Admin (Quick Shortcut for Shop) -->
+              <div id="shop-admin-row" class="menu-row hidden" onclick="handleShopAdminClick()">
+                <div class="menu-row-left">
+                  <div class="menu-icon-box admin-icon" style="background: rgba(43, 109, 239, 0.1); color: #2B6DEF;">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                  </div>
+                  <div class="menu-row-text">
+                    <span class="menu-title">Shop Manager</span>
                     <span class="menu-caption">Manage inventory and orders</span>
                   </div>
                 </div>
@@ -1655,6 +1672,467 @@
         </button>
       </nav>
 
+    </section>
+
+    <!-- ==========================================================================
+         PART 9: UNIFIED ADMIN PANEL SCREEN
+         Only users with profiles.is_admin === true can open
+         Three big cards: 1) Shop Manager, 2) Notes & Ebooks Manager, 3) Test Manager
+         ========================================================================== -->
+    <section id="admin-screen" class="screen admin-screen">
+      <!-- Admin Top Nav -->
+      <header class="admin-top-nav">
+        <div class="admin-nav-left">
+          <button type="button" class="btn-admin-nav-back" onclick="exitAdminPanel()" title="Back to Student App">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <div class="admin-title-group">
+            <h2>Admin Console</h2>
+            <p>Notes Wallah Master Dashboard</p>
+          </div>
+        </div>
+        <div class="admin-badge-pill">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Admin</span>
+        </div>
+      </header>
+
+      <!-- Admin Scrollable Content Container -->
+      <div id="admin-body-scroll" class="admin-body">
+
+        <!-- 1) ADMIN HOME (DASHBOARD HUB) -->
+        <div id="admin-view-hub" class="admin-view active">
+          <div class="admin-hub-header">
+            <div class="admin-welcome-card">
+              <span class="admin-welcome-badge"><i class="fa-solid fa-bolt"></i> Operations</span>
+              <h3 class="admin-welcome-title">Control Center</h3>
+              <p class="admin-welcome-sub">Manage study content, live store products, and student test banks across CBSE Class 9–12.</p>
+            </div>
+
+            <!-- Big Three Management Cards -->
+            <div class="admin-hub-cards-stack">
+              <!-- Card 1: Shop Manager -->
+              <div class="admin-hub-card" onclick="openShopManagerFromAdmin()">
+                <div class="hub-card-icon shop">
+                  <i class="fa-solid fa-bag-shopping"></i>
+                </div>
+                <div class="hub-card-content">
+                  <span class="hub-card-tag">Table: products</span>
+                  <h4 class="hub-card-title">Shop Manager</h4>
+                  <p class="hub-card-desc">Catalog products, marketplace referral links, carousel banners, and storage uploads.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right hub-card-arrow"></i>
+              </div>
+
+              <!-- Card 2: Notes & Ebooks Manager -->
+              <div class="admin-hub-card" onclick="showAdminSubView('admin-view-notes')">
+                <div class="hub-card-icon notes">
+                  <i class="fa-solid fa-book-bookmark"></i>
+                </div>
+                <div class="hub-card-content">
+                  <span class="hub-card-tag">Table: chapters</span>
+                  <h4 class="hub-card-title">Notes &amp; Ebooks Manager</h4>
+                  <p class="hub-card-desc">Add NCERT chapters, external official ebook links, and upload Pro Notes PDFs.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right hub-card-arrow"></i>
+              </div>
+
+              <!-- Card 3: Test Manager -->
+              <div class="admin-hub-card" onclick="showAdminSubView('admin-view-tests')">
+                <div class="hub-card-icon tests">
+                  <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <div class="hub-card-content">
+                  <span class="hub-card-tag">Tables: tests &amp; questions</span>
+                  <h4 class="hub-card-title">Test Manager</h4>
+                  <p class="hub-card-desc">Create chapter mock tests, set duration, and author 4-choice MCQ question banks.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right hub-card-arrow"></i>
+              </div>
+            </div>
+
+            <!-- Back to Student App Button -->
+            <button type="button" class="btn-admin-exit" onclick="exitAdminPanel()">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Back to App (Student View)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2) NOTES & EBOOKS MANAGER VIEW -->
+        <div id="admin-view-notes" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-hub')">
+              <i class="fa-solid fa-arrow-left"></i> Hub
+            </button>
+            <div style="flex:1; margin-left: 8px;">
+              <h3 style="font-size:16px; font-weight:800; margin:0;">Chapters &amp; Notes</h3>
+              <span id="admin-chapters-count-badge" class="admin-item-pill blue">0 Chapters</span>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openAddChapterForm()">
+              <i class="fa-solid fa-plus"></i> Add
+            </button>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="admin-filter-bar">
+            <div class="admin-filter-group">
+              <span class="admin-filter-label">Class</span>
+              <select id="admin-chap-filter-class" class="admin-select-sm" onchange="handleChapterFilterChange()">
+                <option value="Class 9">Class 9</option>
+                <option value="Class 10" selected>Class 10</option>
+                <option value="Class 11">Class 11</option>
+                <option value="Class 12">Class 12</option>
+                <option value="all">All Classes</option>
+              </select>
+            </div>
+
+            <div id="admin-chap-stream-filter-group" class="admin-filter-group hidden">
+              <span class="admin-filter-label">Stream</span>
+              <select id="admin-chap-filter-stream" class="admin-select-sm" onchange="handleChapterFilterChange()">
+                <option value="all">All Streams</option>
+                <option value="Science">Science</option>
+                <option value="Arts">Arts</option>
+                <option value="Commerce">Commerce</option>
+              </select>
+            </div>
+
+            <div class="admin-filter-group" style="min-width: 140px;">
+              <span class="admin-filter-label">Subject Search</span>
+              <input type="text" id="admin-chap-filter-subject" class="admin-select-sm" placeholder="e.g. Science, Physics" oninput="handleChapterFilterChange()" />
+            </div>
+          </div>
+
+          <!-- Chapters List -->
+          <div id="admin-chapters-list">
+            <!-- Injected by js/admin.js -->
+          </div>
+        </div>
+
+        <!-- 3) ADD / EDIT CHAPTER FORM VIEW -->
+        <div id="admin-view-chapter-form" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-notes')">
+              <i class="fa-solid fa-arrow-left"></i> Cancel
+            </button>
+            <h3 id="admin-chap-form-header-title" style="font-size:16px; font-weight:800; margin:0; flex:1; text-align:center;">Add Chapter</h3>
+            <div style="width:50px;"></div>
+          </div>
+
+          <form id="admin-chapter-form" onsubmit="handleSaveChapter(event)" style="display:flex; flex-direction:column; gap:12px;">
+            <!-- Academic Curriculum Details -->
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-graduation-cap"></i> Curriculum Details</h4>
+
+              <div class="form-group">
+                <label class="form-label" for="chap-form-class">Class *</label>
+                <select id="chap-form-class" class="form-input" required onchange="handleChapFormClassChange(this.value)">
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10" selected>Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
+              </div>
+
+              <!-- Conditional Stream for 11/12 -->
+              <div id="chap-form-stream-group" class="form-group hidden">
+                <label class="form-label" for="chap-form-stream">Stream (Class 11 &amp; 12) *</label>
+                <select id="chap-form-stream" class="form-input">
+                  <option value="">-- Select Stream --</option>
+                  <option value="Science">Science</option>
+                  <option value="Arts">Arts</option>
+                  <option value="Commerce">Commerce</option>
+                </select>
+              </div>
+
+              <div class="form-group-row">
+                <div class="form-group" style="flex: 2;">
+                  <label class="form-label" for="chap-form-subject">Subject *</label>
+                  <input type="text" id="chap-form-subject" class="form-input" placeholder="e.g. Science, Physics, History" required />
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label" for="chap-form-no">Chapter # *</label>
+                  <input type="number" id="chap-form-no" class="form-input" value="1" min="1" max="99" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="chap-form-title">Chapter Title *</label>
+                <input type="text" id="chap-form-title" class="form-input" placeholder="e.g. Chemical Reactions and Equations" required />
+              </div>
+            </div>
+
+            <!-- Ebook Link (No Upload) -->
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-link"></i> Ebook Link (External Reader)</h4>
+              <p class="form-section-caption">No file upload. Paste public PDF/reader URL (e.g. official NCERT website or Google Drive link).</p>
+              <div class="form-group">
+                <label class="form-label" for="chap-form-ebook-url">Ebook URL</label>
+                <input type="url" id="chap-form-ebook-url" class="form-input" placeholder="https://ncert.nic.in/textbook/pdf/..." />
+              </div>
+            </div>
+
+            <!-- Pro Notes (Upload to bucket 'notes' or URL) -->
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-file-pdf"></i> Pro Notes PDF &amp; Summary</h4>
+              <p class="form-section-caption">Upload PDF directly to Supabase Storage bucket <code>notes</code> (path: <code>notes/pro/...</code>) or paste URL.</p>
+
+              <input type="file" id="chap-pro-file-input" accept="application/pdf" class="hidden" onchange="handleProNotesPdfFileChange(this)" />
+
+              <div class="upload-buttons-row">
+                <button type="button" class="btn btn-secondary-outline btn-block" onclick="document.getElementById('chap-pro-file-input').click()">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <span>Upload PDF to Supabase 'notes' Bucket</span>
+                </button>
+              </div>
+
+              <div id="chap-pro-pdf-status" class="upload-status-box hidden"></div>
+
+              <div class="form-group" style="margin-top: 10px;">
+                <label class="form-label" for="chap-form-pro-notes-url">Pro Notes PDF URL</label>
+                <input type="url" id="chap-form-pro-notes-url" class="form-input" placeholder="https://... (auto-filled on PDF upload)" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="chap-form-pro-text">Pro Notes Text / Key Concepts Summary (Optional)</label>
+                <textarea id="chap-form-pro-text" class="form-input form-textarea" rows="3" placeholder="Key formulas, reaction cheat sheet, exam tips..."></textarea>
+              </div>
+            </div>
+
+            <!-- Active Status -->
+            <div class="card form-section-card">
+              <div class="admin-toggle-row">
+                <div class="toggle-text-group">
+                  <span class="toggle-title"><i class="fa-solid fa-eye text-blue"></i> Active Status</span>
+                  <span class="toggle-sub">Visible to students in the Study section</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="chap-form-active" checked />
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions-stack">
+              <button type="submit" id="chap-form-submit-btn" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Save Chapter to Supabase</span>
+              </button>
+              <button type="button" id="chap-form-delete-btn" class="btn btn-danger-outline btn-block hidden" onclick="handleDeleteChapter()">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Delete Chapter</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 4) TEST MANAGER VIEW (Table: tests) -->
+        <div id="admin-view-tests" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-hub')">
+              <i class="fa-solid fa-arrow-left"></i> Hub
+            </button>
+            <div style="flex:1; margin-left: 8px;">
+              <h3 style="font-size:16px; font-weight:800; margin:0;">Test Manager</h3>
+              <span id="admin-tests-count-badge" class="admin-item-pill blue">0 Tests</span>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openAddTestForm()">
+              <i class="fa-solid fa-plus"></i> Create Test
+            </button>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="admin-filter-bar">
+            <div class="admin-filter-group">
+              <span class="admin-filter-label">Class</span>
+              <select id="admin-test-filter-class" class="admin-select-sm" onchange="handleTestFilterChange()">
+                <option value="Class 9">Class 9</option>
+                <option value="Class 10" selected>Class 10</option>
+                <option value="Class 11">Class 11</option>
+                <option value="Class 12">Class 12</option>
+                <option value="all">All Classes</option>
+              </select>
+            </div>
+
+            <div class="admin-filter-group" style="min-width: 140px;">
+              <span class="admin-filter-label">Subject Filter</span>
+              <input type="text" id="admin-test-filter-subject" class="admin-select-sm" placeholder="e.g. Science, Maths" oninput="handleTestFilterChange()" />
+            </div>
+          </div>
+
+          <!-- Tests List -->
+          <div id="admin-tests-list">
+            <!-- Injected by js/admin.js -->
+          </div>
+        </div>
+
+        <!-- 5) ADD / EDIT TEST FORM -->
+        <div id="admin-view-test-form" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-tests')">
+              <i class="fa-solid fa-arrow-left"></i> Cancel
+            </button>
+            <h3 id="admin-test-form-header-title" style="font-size:16px; font-weight:800; margin:0; flex:1; text-align:center;">Create Test</h3>
+            <div style="width:50px;"></div>
+          </div>
+
+          <form id="admin-test-form" onsubmit="handleSaveTest(event)" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-clipboard-check"></i> Test Settings</h4>
+
+              <div class="form-group">
+                <label class="form-label" for="test-form-class">Class *</label>
+                <select id="test-form-class" class="form-input" required onchange="handleTestFormClassChange(this.value)">
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10" selected>Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
+              </div>
+
+              <!-- Stream for 11/12 -->
+              <div id="test-form-stream-group" class="form-group hidden">
+                <label class="form-label" for="test-form-stream">Stream (Class 11 &amp; 12)</label>
+                <select id="test-form-stream" class="form-input">
+                  <option value="">-- All Streams / General --</option>
+                  <option value="Science">Science</option>
+                  <option value="Arts">Arts</option>
+                  <option value="Commerce">Commerce</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="test-form-subject">Subject *</label>
+                <input type="text" id="test-form-subject" class="form-input" placeholder="e.g. Science, Mathematics, English" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="test-form-title">Test Title *</label>
+                <input type="text" id="test-form-title" class="form-input" placeholder="e.g. Chemical Reactions Mastery Test" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="test-form-duration">Duration (Minutes) *</label>
+                <input type="number" id="test-form-duration" class="form-input" value="15" min="5" max="180" required />
+              </div>
+            </div>
+
+            <!-- Active Status -->
+            <div class="card form-section-card">
+              <div class="admin-toggle-row">
+                <div class="toggle-text-group">
+                  <span class="toggle-title"><i class="fa-solid fa-eye text-blue"></i> Test Active Status</span>
+                  <span class="toggle-sub">Available to students in the Test tab</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="test-form-active" checked />
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-actions-stack">
+              <button type="submit" id="test-form-submit-btn" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Save Test Details</span>
+              </button>
+              <button type="button" id="test-form-delete-btn" class="btn btn-danger-outline btn-block hidden" onclick="handleDeleteTest()">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Delete Test</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 6) QUESTIONS LIST VIEW FOR A TEST -->
+        <div id="admin-view-questions" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-tests')">
+              <i class="fa-solid fa-arrow-left"></i> Tests
+            </button>
+            <div style="flex:1; margin-left:8px;">
+              <h3 id="admin-questions-test-title" style="font-size:15px; font-weight:800; margin:0; line-height:1.2;">Test Questions</h3>
+              <span id="admin-questions-count-badge" class="admin-item-pill blue">0 Questions</span>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openAddQuestionForm()">
+              <i class="fa-solid fa-plus"></i> Add Question
+            </button>
+          </div>
+
+          <div id="admin-questions-list">
+            <!-- Injected by js/admin.js -->
+          </div>
+        </div>
+
+        <!-- 7) ADD / EDIT QUESTION FORM -->
+        <div id="admin-view-question-form" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-questions')">
+              <i class="fa-solid fa-arrow-left"></i> Cancel
+            </button>
+            <h3 id="admin-q-form-title" style="font-size:16px; font-weight:800; margin:0; flex:1; text-align:center;">Add MCQ Question</h3>
+            <div style="width:50px;"></div>
+          </div>
+
+          <form id="admin-question-form" onsubmit="handleSaveQuestion(event)" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-question"></i> Question Text</h4>
+              <div class="form-group">
+                <textarea id="q-form-text" class="form-input form-textarea" rows="3" placeholder="Enter question statement here..." required></textarea>
+              </div>
+            </div>
+
+            <div class="card form-section-card">
+              <h4 class="form-section-title"><i class="fa-solid fa-list-ol"></i> Multiple Choice Options</h4>
+
+              <div class="form-group">
+                <label class="form-label" for="q-form-opt-a">Option A *</label>
+                <input type="text" id="q-form-opt-a" class="form-input" placeholder="Option A text" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="q-form-opt-b">Option B *</label>
+                <input type="text" id="q-form-opt-b" class="form-input" placeholder="Option B text" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="q-form-opt-c">Option C</label>
+                <input type="text" id="q-form-opt-c" class="form-input" placeholder="Option C text" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="q-form-opt-d">Option D</label>
+                <input type="text" id="q-form-opt-d" class="form-input" placeholder="Option D text" />
+              </div>
+
+              <div class="form-group-row" style="margin-top:8px;">
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" for="q-form-correct">Correct Option *</label>
+                  <select id="q-form-correct" class="form-input" required>
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                    <option value="D">Option D</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" for="q-form-order">Question #</label>
+                  <input type="number" id="q-form-order" class="form-input" value="1" min="1" max="500" required />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions-stack">
+              <button type="submit" id="q-form-submit-btn" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Save Question</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
     </section>
 
     <!-- Global Toast Alert -->
@@ -2065,6 +2543,7 @@
   <script src="js/challenges.js"></script>
   <script src="js/shop-data.js"></script>
   <script src="js/shop.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/navigation.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>

@@ -285,6 +285,7 @@ function renderAppProfileData(profile) {
   const accountMedium = document.getElementById('account-medium-chip');
   const accountMenuSub = document.getElementById('account-menu-academic-sub');
   const shopAdminRow = document.getElementById('shop-admin-row');
+  const adminPanelRow = document.getElementById('admin-panel-menu-row');
 
   if (accountAvatarInitials) accountAvatarInitials.textContent = initials;
   if (accountName) accountName.textContent = profile.name || 'Student';
@@ -307,10 +308,20 @@ function renderAppProfileData(profile) {
     accountMenuSub.textContent = `${classText}${streamText ? ' (' + streamText + ')' : ''} · Update class, stream, or board`;
   }
 
-  // Show/Hide Shop Admin menu row based on is_admin flag or email in ADMIN_EMAILS
+  // Show/Hide Admin menu rows based on is_admin flag or email in ADMIN_EMAILS
+  const isAdmin = (profile.is_admin === true) || 
+    (typeof checkIsUserAdmin === 'function' && checkIsUserAdmin()) ||
+    (typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin());
+
+  if (adminPanelRow) {
+    if (isAdmin) {
+      adminPanelRow.classList.remove('hidden');
+    } else {
+      adminPanelRow.classList.add('hidden');
+    }
+  }
+
   if (shopAdminRow) {
-    const isAdmin = (profile.is_admin === true) || 
-      (typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin());
     if (isAdmin) {
       shopAdminRow.classList.remove('hidden');
     } else {
