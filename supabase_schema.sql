@@ -163,3 +163,60 @@ ON storage.objects FOR SELECT USING (bucket_id = 'notes');
 
 CREATE POLICY "Admins upload to notes bucket" 
 ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'notes' AND public.is_admin());
+
+-- ==========================================================================
+-- SHOP BANNERS & MULTI-IMAGE PRODUCTS
+-- ==========================================================================
+
+-- Table: shop_banners
+CREATE TABLE IF NOT EXISTS public.shop_banners (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  title TEXT,
+  subtitle TEXT,
+  link_url TEXT,
+  target_url TEXT,
+  show_date DATE,
+  is_active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.shop_banners ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public view active shop banners"
+ON public.shop_banners FOR SELECT USING (is_active = true OR public.is_admin());
+
+CREATE POLICY "Admins insert shop banners"
+ON public.shop_banners FOR INSERT WITH CHECK (public.is_admin());
+
+CREATE POLICY "Admins update shop banners"
+ON public.shop_banners FOR UPDATE USING (public.is_admin());
+
+CREATE POLICY "Admins delete shop banners"
+ON public.shop_banners FOR DELETE USING (public.is_admin());
+
+-- Add images column to products if not exists
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+-- Storage buckets for shop-banners and products
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('shop-banners', 'shop-banners', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('products', 'products', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+CREATE POLICY "Public read shop-banners bucket"
+ON storage.objects FOR SELECT USING (bucket_id = 'shop-banners');
+
+CREATE POLICY "Admins upload to shop-banners bucket"
+ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'shop-banners' AND public.is_admin());
+
+CREATE POLICY "Public read products bucket"
+ON storage.objects FOR SELECT USING (bucket_id = 'products');
+
+CREATE POLICY "Admins upload to products bucket"
+ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'products' AND public.is_admin());
+

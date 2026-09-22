@@ -15,6 +15,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import java.io.File
 
 class MainActivity : ComponentActivity() {
   private var activeWebView: WebView? = null
@@ -22,6 +23,22 @@ class MainActivity : ComponentActivity() {
   @SuppressLint("SetJavaScriptEnabled")
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    // Pre-initialize WebView HTTP Code Cache directories so chromium simple_file_enumerator
+    // does not log missing directory errors when inspecting disk cache
+    try {
+      val baseDirs = listOfNotNull(
+        cacheDir,
+        filesDir?.parentFile?.let { File(it, "cache") }
+      )
+      for (base in baseDirs) {
+        val codeCacheDir = File(base, "WebView/Default/HTTP Cache/Code Cache")
+        File(codeCacheDir, "js").mkdirs()
+        File(codeCacheDir, "wasm").mkdirs()
+      }
+    } catch (e: Exception) {
+      Log.d("NotesWallah", "Cache directory init: ${e.message}")
+    }
 
     val webView = WebView(this).apply {
       layoutParams = ViewGroup.LayoutParams(
@@ -35,13 +52,12 @@ class MainActivity : ComponentActivity() {
         databaseEnabled = true
         allowFileAccess = true
         allowContentAccess = true
-        cacheMode = WebSettings.LOAD_NO_CACHE
+        cacheMode = WebSettings.LOAD_DEFAULT
         useWideViewPort = true
         loadWithOverviewMode = true
         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
       }
 
-      setLayerType(View.LAYER_TYPE_SOFTWARE, null)
       isVerticalScrollBarEnabled = false
       isHorizontalScrollBarEnabled = false
       isClickable = true

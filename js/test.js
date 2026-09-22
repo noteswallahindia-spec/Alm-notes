@@ -78,6 +78,8 @@ function renderTestHome() {
   const recentContainer = document.getElementById('test-recent-banner');
   if (!container) return;
 
+  initTestStartFlow();
+
   // 1) Render Recent Result banner if exists
   if (recentContainer) {
     if (lastTestResult) {
@@ -195,11 +197,17 @@ function viewRecentResult() {
 }
 
 /**
- * Start a Test session
- * @param {string} testId 
+ * Start a Test session (Accepts testId or custom test object)
+ * @param {string | Object} testOrId 
  */
-function startTest(testId) {
-  const test = getTestById(testId);
+function startTest(testOrId) {
+  let test = null;
+  if (testOrId && typeof testOrId === 'object') {
+    test = testOrId;
+  } else {
+    test = getTestById(testOrId);
+  }
+
   if (!test) {
     if (typeof showToast === 'function') showToast('Test not found', 'error');
     return;
@@ -208,7 +216,7 @@ function startTest(testId) {
   activeTest = test;
   currentQuestionIndex = 0;
   userAnswers = {};
-  timeTotalSec = test.durationMin * 60;
+  timeTotalSec = (test.durationMin || 15) * 60;
   timeRemainingSec = timeTotalSec;
 
   // Populate header labels
@@ -689,4 +697,620 @@ function confirmQuitTest() {
   if (typeof showToast === 'function') {
     showToast('Test exited', 'info');
   }
+}
+
+/* ==========================================================================
+   NEW TEST START FLOW CONTROLLER
+   Multi-Class (9-12), Stream Selection, Chapter Multi-Select & Duration
+   Question Count Rules: 1 ch = 10 Qs, 2 ch = 20 Qs, 3 ch = 30 Qs, All ch = 100 Qs
+   ========================================================================== */
+
+let selectedTestClass = 'Class 10';
+let selectedTestStream = 'Science';
+let selectedTestSubjectId = null;
+let selectedTestChapterIds = [];
+let selectedTestDuration = 15;
+
+/**
+ * Initialize or sync the Test Start Flow UI
+ */
+function initTestStartFlow() {
+  const userClass = (typeof AppState !== 'undefined' && AppState.user && AppState.user.class)
+    ? AppState.user.class
+    : (typeof currentProfile !== 'undefined' && currentProfile?.class ? currentProfile.class : 'Class 10');
+  const userStream = (typeof AppState !== 'undefined' && AppState.user && AppState.user.stream)
+    ? AppState.user.stream
+    : (typeof currentProfile !== 'undefined' && currentProfile?.stream ? currentProfile.stream : 'Science');
+
+  if (['Class 9', 'Class 10', 'Class 11', 'Class 12'].includes(userClass)) {
+    selectedTestClass = userClass;
+  }
+  if (userStream) {
+    selectedTestStream = userStream;
+  }
+
+  // Update Class chip selection
+  const classChips = document.querySelectorAll('#test-class-chips .flow-chip');
+  classChips.forEach(chip => {
+    if (chip.getAttribute('data-class') === selectedTestClass) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  // Toggle Stream group visibility for Class 11/12
+  const streamGroup = document.getElementById('test-stream-group');
+  if (streamGroup) {
+    if (selectedTestClass === 'Class 11' || selectedTestClass === 'Class 12') {
+      streamGroup.classList.remove('hidden');
+    } else {
+      streamGroup.classList.add('hidden');
+    }
+  }
+
+  // Update Stream chips UI
+  const streamChips = document.querySelectorAll('#test-stream-chips .flow-chip');
+  streamChips.forEach(chip => {
+    if (chip.getAttribute('data-stream') === selectedTestStream) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  // Populate subjects & chapters
+  renderTestSubjects();
+}
+
+/**
+ * User selects Class in Test Start Flow
+ */
+function selectTestClass(className) {
+  selectedTestClass = className;
+  const classChips = document.querySelectorAll('#test-class-chips .flow-chip');
+  classChips.forEach(chip => {
+    if (chip.getAttribute('data-class') === className) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  const streamGroup = document.getElementById('test-stream-group');
+  if (streamGroup) {
+    if (className === 'Class 11' || className === 'Class 12') {
+      streamGroup.classList.remove('hidden');
+    } else {
+      streamGroup.classList.add('hidden');
+    }
+  }
+
+  renderTestSubjects();
+}
+
+/**
+ * User selects Stream in Test Start Flow (Class 11/12)
+ */
+function selectTestStream(streamName) {
+  selectedTestStream = streamName;
+  const streamChips = document.querySelectorAll('#test-stream-chips .flow-chip');
+  streamChips.forEach(chip => {
+    if (chip.getAttribute('data-stream') === streamName) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  renderTestSubjects();
+}
+
+/**
+ * Retrieve curriculum subjects for given Class and Stream
+ */
+function getSubjectsForClassAndStream(className, streamName) {
+  if (className === 'Class 9' && typeof CLASS_9_SUBJECTS !== 'undefined') {
+    return CLASS_9_SUBJECTS;
+  }
+  if (className === 'Class 11') {
+    const s = (streamName || '').toLowerCase();
+    if (s.includes('comm') && typeof CLASS_11_COMMERCE_SUBJECTS !== 'undefined') return CLASS_11_COMMERCE_SUBJECTS;
+    if ((s.includes('art') || s.includes('human')) && typeof CLASS_11_ARTS_SUBJECTS !== 'undefined') return CLASS_11_ARTS_SUBJECTS;
+    if (typeof CLASS_11_SCIENCE_SUBJECTS !== 'undefined') return CLASS_11_SCIENCE_SUBJECTS;
+  }
+  if (className === 'Class 12') {
+    const s = (streamName || '').toLowerCase();
+    if (s.includes('comm') && typeof CLASS_12_COMMERCE_SUBJECTS !== 'undefined') return CLASS_12_COMMERCE_SUBJECTS;
+    if ((s.includes('art') || s.includes('human')) && typeof CLASS_12_ARTS_SUBJECTS !== 'undefined') return CLASS_12_ARTS_SUBJECTS;
+    if (typeof CLASS_12_SCIENCE_SUBJECTS !== 'undefined') return CLASS_12_SCIENCE_SUBJECTS;
+  }
+  if (typeof CLASS_10_SUBJECTS !== 'undefined') {
+    return CLASS_10_SUBJECTS;
+  }
+  return typeof getAllSubjects === 'function' ? getAllSubjects() : [];
+}
+
+/**
+ * Render subject selection chips
+ */
+function renderTestSubjects() {
+  const container = document.getElementById('test-subjects-chips');
+  if (!container) return;
+
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  if (!subjects || subjects.length === 0) {
+    container.innerHTML = '<span style="font-size: 13px; color: var(--text-tertiary);">No subjects available</span>';
+    return;
+  }
+
+  const exists = subjects.some(s => s.id === selectedTestSubjectId);
+  if (!exists && subjects.length > 0) {
+    selectedTestSubjectId = subjects[0].id;
+  }
+
+  container.innerHTML = subjects.map(s => {
+    const isSel = s.id === selectedTestSubjectId;
+    return `
+      <button 
+        type="button" 
+        class="flow-chip ${isSel ? 'active' : ''}" 
+        onclick="selectTestSubject('${s.id}')"
+      >
+        <i class="${s.icon || 'fa-solid fa-book'}"></i>
+        <span>${s.name}</span>
+      </button>
+    `;
+  }).join('');
+
+  renderTestChapters();
+}
+
+/**
+ * User selects subject
+ */
+function selectTestSubject(subjectId) {
+  selectedTestSubjectId = subjectId;
+  const chips = document.querySelectorAll('#test-subjects-chips .flow-chip');
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  chips.forEach((chip, idx) => {
+    if (subjects[idx] && subjects[idx].id === subjectId) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  renderTestChapters();
+}
+
+/**
+ * Render Chapter checkboxes for selected subject
+ */
+function renderTestChapters() {
+  const container = document.getElementById('test-chapters-checklist');
+  if (!container) return;
+
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  const currentSubject = subjects.find(s => s.id === selectedTestSubjectId) || subjects[0];
+
+  if (!currentSubject || !currentSubject.chapters || currentSubject.chapters.length === 0) {
+    container.innerHTML = '<span style="font-size: 13px; color: var(--text-tertiary); padding: 10px;">No chapters found for this subject.</span>';
+    selectedTestChapterIds = [];
+    updateTestCalculation();
+    return;
+  }
+
+  // Default to selecting the first chapter
+  const allChapterIds = currentSubject.chapters.map(c => c.id);
+  selectedTestChapterIds = selectedTestChapterIds.filter(id => allChapterIds.includes(id));
+  if (selectedTestChapterIds.length === 0 && currentSubject.chapters.length > 0) {
+    selectedTestChapterIds = [currentSubject.chapters[0].id];
+  }
+
+  container.innerHTML = currentSubject.chapters.map(ch => {
+    const isChecked = selectedTestChapterIds.includes(ch.id);
+    return `
+      <label class="flow-chapter-item ${isChecked ? 'selected' : ''}" onclick="toggleChapterSelection('${ch.id}', event)">
+        <input 
+          type="checkbox" 
+          value="${ch.id}" 
+          ${isChecked ? 'checked' : ''} 
+          class="flow-ch-checkbox" 
+          onclick="event.stopPropagation(); toggleChapterSelection('${ch.id}')"
+        />
+        <div class="flow-chapter-info">
+          <span class="flow-chapter-title">Ch ${ch.number}: ${ch.title}</span>
+          <span class="flow-chapter-meta">${ch.pages || 15} pages · NCERT</span>
+        </div>
+      </label>
+    `;
+  }).join('');
+
+  updateSelectAllButtonState(currentSubject.chapters.length);
+  updateTestCalculation();
+}
+
+/**
+ * Toggle individual chapter selection
+ */
+function toggleChapterSelection(chId, event) {
+  if (event && event.target && event.target.tagName === 'INPUT') {
+    return;
+  }
+
+  const idx = selectedTestChapterIds.indexOf(chId);
+  if (idx > -1) {
+    if (selectedTestChapterIds.length > 1) {
+      selectedTestChapterIds.splice(idx, 1);
+    } else {
+      if (typeof showToast === 'function') {
+        showToast('At least 1 chapter must be selected', 'warning');
+      }
+      return;
+    }
+  } else {
+    selectedTestChapterIds.push(chId);
+  }
+
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  const currentSubject = subjects.find(s => s.id === selectedTestSubjectId);
+  if (currentSubject) {
+    const items = document.querySelectorAll('#test-chapters-checklist .flow-chapter-item');
+    currentSubject.chapters.forEach((ch, i) => {
+      const isChecked = selectedTestChapterIds.includes(ch.id);
+      if (items[i]) {
+        items[i].classList.toggle('selected', isChecked);
+        const cb = items[i].querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = isChecked;
+      }
+    });
+    updateSelectAllButtonState(currentSubject.chapters.length);
+  }
+
+  updateTestCalculation();
+}
+
+/**
+ * Toggle Select All / Deselect All chapters
+ */
+function toggleSelectAllChapters() {
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  const currentSubject = subjects.find(s => s.id === selectedTestSubjectId);
+  if (!currentSubject || !currentSubject.chapters) return;
+
+  const allIds = currentSubject.chapters.map(c => c.id);
+  const areAllSelected = selectedTestChapterIds.length === allIds.length;
+
+  if (areAllSelected) {
+    selectedTestChapterIds = [allIds[0]];
+  } else {
+    selectedTestChapterIds = [...allIds];
+  }
+
+  const items = document.querySelectorAll('#test-chapters-checklist .flow-chapter-item');
+  currentSubject.chapters.forEach((ch, i) => {
+    const isChecked = selectedTestChapterIds.includes(ch.id);
+    if (items[i]) {
+      items[i].classList.toggle('selected', isChecked);
+      const cb = items[i].querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = isChecked;
+    }
+  });
+
+  updateSelectAllButtonState(currentSubject.chapters.length);
+  updateTestCalculation();
+}
+
+function updateSelectAllButtonState(totalChapters) {
+  const btn = document.getElementById('test-select-all-chapters-btn');
+  if (!btn) return;
+  const areAllSelected = selectedTestChapterIds.length === totalChapters;
+  btn.textContent = areAllSelected ? 'Deselect All' : 'Select All';
+}
+
+/**
+ * Select Duration preset chip
+ */
+function selectTestDuration(mins) {
+  selectedTestDuration = parseInt(mins, 10) || 15;
+  const chips = document.querySelectorAll('#test-duration-presets .flow-chip');
+  chips.forEach(chip => {
+    if (parseInt(chip.getAttribute('data-min'), 10) === selectedTestDuration) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  const customInput = document.getElementById('test-custom-duration-input');
+  if (customInput) {
+    customInput.value = selectedTestDuration;
+  }
+
+  updateTestCalculation();
+}
+
+/**
+ * Handle custom duration input change
+ */
+function handleCustomDurationChange(val) {
+  let mins = parseInt(val, 10);
+  if (isNaN(mins) || mins < 1) mins = 1;
+  if (mins > 180) mins = 180;
+  selectedTestDuration = mins;
+
+  const chips = document.querySelectorAll('#test-duration-presets .flow-chip');
+  chips.forEach(chip => {
+    if (parseInt(chip.getAttribute('data-min'), 10) === mins) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  const customInput = document.getElementById('test-custom-duration-input');
+  if (customInput) customInput.value = mins;
+
+  updateTestCalculation();
+}
+
+/**
+ * Strict Question Count Rules:
+ * 1 ch = 10 Qs
+ * 2 ch = 20 Qs
+ * 3 ch = 30 Qs
+ * All ch = 100 Qs
+ */
+function computeConfiguredQuestionCount() {
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  const currentSubject = subjects.find(s => s.id === selectedTestSubjectId);
+  const totalInSubject = (currentSubject && currentSubject.chapters) ? currentSubject.chapters.length : 10;
+  const count = selectedTestChapterIds.length;
+
+  if (count === 0) return 0;
+  if (count === totalInSubject) return 100;
+  if (count === 1) return 10;
+  if (count === 2) return 20;
+  if (count === 3) return 30;
+  return Math.min(count * 10, 100);
+}
+
+/**
+ * Update UI labels based on configured settings
+ */
+function updateTestCalculation() {
+  const qCount = computeConfiguredQuestionCount();
+  const qCountPill = document.getElementById('test-calculated-qcount');
+  const ctaBtn = document.getElementById('btn-start-configured-test');
+  const ctaText = document.getElementById('test-start-cta-text');
+
+  if (qCountPill) {
+    qCountPill.textContent = `${qCount} Questions`;
+  }
+
+  if (ctaText) {
+    ctaText.textContent = `Start Test (${qCount} Questions · ${selectedTestDuration} Mins)`;
+  }
+
+  if (ctaBtn) {
+    ctaBtn.disabled = qCount === 0 || selectedTestDuration <= 0;
+  }
+}
+
+/**
+ * Build authentic question bank for selected chapters matching exact target count
+ */
+function buildMockQuestionsForChapters(subject, chapters, targetCount) {
+  const result = [];
+  let qId = 1;
+
+  // High-yield NCERT question builder per chapter
+  chapters.forEach((ch, chIdx) => {
+    const chTitle = ch.title || `Chapter ${ch.number || chIdx + 1}`;
+    const highlights = ch.highlights || [];
+    
+    const chapterQuestions = [
+      {
+        text: `In "${chTitle}", which of the following statements represents the core fundamental concept?`,
+        options: [
+          highlights[0] ? `It primarily focuses on: ${highlights[0]}` : `It establishes the fundamental theoretical framework of ${chTitle}.`,
+          `It contradicts the standard NCERT curriculum guidelines.`,
+          `It is solely applicable to non-standard lab experiments.`,
+          `None of the standard empirical assertions apply.`
+        ],
+        correctIndex: 0,
+        explanation: `As detailed in the NCERT curriculum, ${highlights[0] || chTitle} forms the primary conceptual basis for this chapter.`
+      },
+      {
+        text: `Which principle or formula application is central to solving questions in "${chTitle}"?`,
+        options: [
+          `Classical approximation without experimental validity`,
+          highlights[1] ? `Application of: ${highlights[1]}` : `Analytical derivation and systematic problem solving in ${chTitle}`,
+          `Random statistical sampling without mathematical formulation`,
+          `Arbitrary constant assumptions`
+        ],
+        correctIndex: 1,
+        explanation: `${highlights[1] || 'Analytical derivation'} is heavily emphasized in board examinations for ${chTitle}.`
+      },
+      {
+        text: `What is a common pitfall that students must avoid in "${chTitle}" board examination questions?`,
+        options: [
+          `Writing proper units and showing intermediate calculation steps`,
+          `Applying formulas outside their specific boundary conditions`,
+          `Drawing labeled schematics or diagrams where applicable`,
+          `Stating standard NCERT definitions clearly`
+        ],
+        correctIndex: 1,
+        explanation: `Applying formulas outside their domain or boundary conditions without verifying assumptions is the most frequent source of mark deductions.`
+      },
+      {
+        text: `In the context of "${chTitle}", which relation or law is most frequently tested?`,
+        options: [
+          highlights[2] ? `The principles underlying: ${highlights[2]}` : `The standard governing law and dimensional consistency of ${chTitle}`,
+          `Inverse proportional deviation under non-standard conditions`,
+          `Static qualitative conjecture without quantitative basis`,
+          `None of the above`
+        ],
+        correctIndex: 0,
+        explanation: `Board papers frequently assess ${highlights[2] || 'standard governing relations'} through direct numericals and conceptual assertions.`
+      },
+      {
+        text: `When solving numerical problems or case studies in "${chTitle}", what is the recommended starting step?`,
+        options: [
+          `Directly guess the approximate final answer`,
+          `Identify given data, write the applicable standard formula, and substitute in SI units`,
+          `Skip formula representation and write only the final value`,
+          `Substitute values in mixed non-standard units`
+        ],
+        correctIndex: 1,
+        explanation: `CBSE marking schemes allocate dedicated marks for writing the correct formula and converting variables into consistent SI units.`
+      },
+      {
+        text: `Assertion (A): Concepts in "${chTitle}" are strictly verified by empirical observations. Reason (R): The NCERT curriculum relies on repeatable scientific experiments and logical deductions.`,
+        options: [
+          `Both (A) and (R) are true and (R) is the correct explanation of (A).`,
+          `Both (A) and (R) are true but (R) is NOT the correct explanation of (A).`,
+          `(A) is true but (R) is false.`,
+          `(A) is false but (R) is true.`
+        ],
+        correctIndex: 0,
+        explanation: `Both assertion and reason are factual, and logical deduction is the exact foundational reason for empirical verification in ${chTitle}.`
+      },
+      {
+        text: `Which of the following is an essential requirement for obtaining full credit in descriptive questions of "${chTitle}"?`,
+        options: [
+          `Using colloquial language instead of standard scientific/mathematical terminology`,
+          `Precise technical keywords, structured bullet points, and neat diagrams`,
+          `Writing excessively long paragraphs with redundant repetitions`,
+          `Omitting the conclusion or final unit`
+        ],
+        correctIndex: 1,
+        explanation: `Examiners reward concise answers containing exact textbook keywords, clear steps, and properly labeled diagrams.`
+      },
+      {
+        text: `How does mastering "${chTitle}" support performance in higher-level competitive examinations?`,
+        options: [
+          `It has no relevance beyond class school tests`,
+          `It serves as the prerequisite foundation for advanced multi-concept problem solving`,
+          `It only provides historical dates without conceptual application`,
+          `It teaches memorization without logical reasoning`
+        ],
+        correctIndex: 1,
+        explanation: `Topics in ${chTitle} build core analytical and problem-solving skills tested across all national competitive examinations.`
+      },
+      {
+        text: `In "${chTitle}", if a question asks for a formal definition, what ensures maximum marks?`,
+        options: [
+          `A general vague statement in student's own colloquial terms`,
+          `Exact NCERT wording or equivalent scientific precision with standard conditions`,
+          `Only giving an example without defining the term`,
+          `Leaving out the key operative words`
+        ],
+        correctIndex: 1,
+        explanation: `Scientific and mathematical definitions require explicit inclusion of governing conditions and standard terminology.`
+      },
+      {
+        text: `Which graphical or diagrammatic representation is commonly associated with "${chTitle}"?`,
+        options: [
+          `Linear or non-linear trend curves with properly marked axes and origin`,
+          `Unlabeled sketches without directional arrows`,
+          `Arbitrary freehand shapes without scale`,
+          `None of the above`
+        ],
+        correctIndex: 0,
+        explanation: `Graphs must clearly indicate physical quantities, scale, units on both axes, and proper trend curvature.`
+      }
+    ];
+
+    chapterQuestions.forEach(cq => {
+      if (result.length < targetCount) {
+        result.push({
+          id: qId++,
+          text: cq.text,
+          options: cq.options,
+          correctIndex: cq.correctIndex,
+          explanation: cq.explanation
+        });
+      }
+    });
+  });
+
+  // If more questions needed to reach targetCount (e.g. 100 Qs for full syllabus), generate variations
+  while (result.length < targetCount) {
+    const ch = chapters[result.length % chapters.length];
+    const chTitle = ch.title || `Chapter ${ch.number || 1}`;
+    const num = result.length + 1;
+    result.push({
+      id: num,
+      text: `[Q${num}] For "${chTitle}", evaluate: Which option correctly identifies a key exam property or definition?`,
+      options: [
+        `Standard property verified by NCERT syllabus guidelines`,
+        `Non-standard arbitrary formulation`,
+        `Empirically disproven hypothesis`,
+        `Outdated historical misconception`
+      ],
+      correctIndex: 0,
+      explanation: `Detailed in NCERT syllabus for ${chTitle}: standard principles must be observed for valid solutions.`
+    });
+  }
+
+  return result.slice(0, targetCount);
+}
+
+/**
+ * Handle Start Configured Test click
+ */
+function handleStartConfiguredTest() {
+  const subjects = getSubjectsForClassAndStream(selectedTestClass, selectedTestStream);
+  const currentSubject = subjects.find(s => s.id === selectedTestSubjectId);
+
+  if (!currentSubject) {
+    if (typeof showToast === 'function') showToast('Please select a subject', 'warning');
+    return;
+  }
+
+  if (!selectedTestChapterIds || selectedTestChapterIds.length === 0) {
+    if (typeof showToast === 'function') showToast('Please select at least 1 chapter', 'warning');
+    return;
+  }
+
+  const selectedChapters = currentSubject.chapters.filter(ch => selectedTestChapterIds.includes(ch.id));
+  if (selectedChapters.length === 0) {
+    if (typeof showToast === 'function') showToast('Please select at least 1 chapter', 'warning');
+    return;
+  }
+
+  const targetQCount = computeConfiguredQuestionCount();
+  if (targetQCount <= 0) {
+    if (typeof showToast === 'function') showToast('Invalid question count', 'warning');
+    return;
+  }
+
+  const questions = buildMockQuestionsForChapters(currentSubject, selectedChapters, targetQCount);
+
+  let chapterLabel = '';
+  if (selectedChapters.length === 1) {
+    chapterLabel = selectedChapters[0].title;
+  } else if (selectedChapters.length === currentSubject.chapters.length) {
+    chapterLabel = 'Full Syllabus Mock';
+  } else {
+    chapterLabel = `${selectedChapters.length} Chapters (${selectedChapters.map(c => `Ch ${c.number}`).join(', ')})`;
+  }
+
+  const customTest = {
+    id: `custom_${Date.now()}`,
+    title: `${currentSubject.name} · ${chapterLabel}`,
+    subject: currentSubject.name,
+    subjectCode: currentSubject.code || '101',
+    color: currentSubject.color || '#2B6DEF',
+    icon: currentSubject.icon || 'fa-solid fa-graduation-cap',
+    questionCount: questions.length,
+    durationMin: selectedTestDuration,
+    difficulty: targetQCount >= 30 ? 'Comprehensive' : 'Standard',
+    description: `Custom test covering ${chapterLabel} for ${selectedTestClass}.`,
+    questions: questions
+  };
+
+  startTest(customTest);
 }

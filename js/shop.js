@@ -60,13 +60,21 @@ function normalizeProduct(raw) {
   const catKey = (raw.category || 'books').toLowerCase();
   const meta = CATEGORY_META[catKey] || { label: 'General', icon: 'fa-solid fa-box', color: '#2B6DEF' };
 
+  const img1 = raw.image_url || raw.imageUrl || '';
+  const img2 = raw.image_url_2 || raw.imageUrl2 || '';
+  const img3 = raw.image_url_3 || raw.imageUrl3 || '';
+  const images = [img1, img2, img3].filter(Boolean);
+
   return {
     id: String(raw.id || 'p_' + Math.random().toString(36).substring(2, 9)),
     name: raw.name || 'Untitled Product',
     category: catKey,
     categoryLabel: meta.label,
     description: raw.description || '',
-    imageUrl: raw.image_url || raw.imageUrl || '',
+    imageUrl: img1,
+    imageUrl2: img2,
+    imageUrl3: img3,
+    images: images,
     icon: meta.icon,
     iconBg: meta.color,
     isFeatured: !!(raw.is_featured ?? raw.isFeatured),
@@ -306,12 +314,60 @@ function renderCardMarketplaceButtons(product) {
   return buttonsHtml;
 }
 
+function renderProductCardHtml(product) {
+  const mktButtons = renderCardMarketplaceButtons(product);
+  const hasImage = !!product.imageUrl;
+
+  // In Part 7, users must NEVER see the word "Pinned" or a pin icon
+  const badgesHtml = product.isFeatured ? `
+    <div class="product-badges-corner" style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 2;">
+      <span class="product-featured-badge" style="position: static;"><i class="fa-solid fa-star"></i> Featured</span>
+    </div>
+  ` : '';
+
+  return `
+    <div class="card product-card" onclick="openProductDetail('${product.id}')">
+      <div class="product-card-visual" style="--card-accent: ${product.iconBg || '#2B6DEF'}; position: relative;">
+        ${badgesHtml}
+        ${hasImage ? `
+          <img 
+            src="${product.imageUrl}" 
+            alt="${product.name}" 
+            class="product-card-img" 
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+        ` : ''}
+        <div class="product-icon-wrap" style="background-color: ${product.iconBg || '#2B6DEF'}; ${hasImage ? 'display: none;' : ''}">
+          <i class="${product.icon || 'fa-solid fa-box'}"></i>
+        </div>
+      </div>
+
+      <div class="product-card-info">
+        <span class="product-cat-label">${product.categoryLabel}</span>
+        <h4 class="product-card-title">${product.name}</h4>
+        <p class="product-card-snippet">${product.description}</p>
+      </div>
+
+      <div class="product-card-footer">
+        <div class="product-mkt-label">
+          <span>Available on:</span>
+        </div>
+        <div class="product-mkt-row">
+          ${mktButtons}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Render Products Grid (User Shop)
  */
 function renderShopProducts() {
   const container = document.getElementById('shop-products-grid');
   const countBadge = document.getElementById('shop-products-count');
+  const recSection = document.getElementById('shop-recommended-section');
+  const recGrid = document.getElementById('shop-recommended-grid');
   if (!container) return;
 
   const dataset = liveProductsList || [];
@@ -328,6 +384,22 @@ function renderShopProducts() {
 
   if (countBadge) {
     countBadge.textContent = `${filtered.length} Items`;
+  }
+
+  // Recommended Section: Show is_featured OR is_pinned products first (no "Pinned" text to users)
+  const isBrowsingAll = currentShopCategory === 'all' && !currentShopSearch;
+  if (recSection && recGrid) {
+    if (isBrowsingAll) {
+      const recommendedList = filtered.filter(p => p.isFeatured || p.isPinned);
+      if (recommendedList.length > 0) {
+        recSection.classList.remove('hidden');
+        recGrid.innerHTML = recommendedList.map(renderProductCardHtml).join('');
+      } else {
+        recSection.classList.add('hidden');
+      }
+    } else {
+      recSection.classList.add('hidden');
+    }
   }
 
   // Handle empty state
@@ -349,55 +421,15 @@ function renderShopProducts() {
   }
 
   // Render cards
-  container.innerHTML = filtered.map(product => {
-    const mktButtons = renderCardMarketplaceButtons(product);
-    const hasImage = !!product.imageUrl;
-
-    // In Part 7, users must NEVER see the word "Pinned" or a pin icon
-    const badgesHtml = product.isFeatured ? `
-      <div class="product-badges-corner" style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 2;">
-        <span class="product-featured-badge" style="position: static;"><i class="fa-solid fa-star"></i> Featured</span>
-      </div>
-    ` : '';
-
-    return `
-      <div class="card product-card" onclick="openProductDetail('${product.id}')">
-        <div class="product-card-visual" style="--card-accent: ${product.iconBg || '#2B6DEF'}; position: relative;">
-          ${badgesHtml}
-          ${hasImage ? `
-            <img 
-              src="${product.imageUrl}" 
-              alt="${product.name}" 
-              class="product-card-img" 
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-            />
-          ` : ''}
-          <div class="product-icon-wrap" style="background-color: ${product.iconBg || '#2B6DEF'}; ${hasImage ? 'display: none;' : ''}">
-            <i class="${product.icon || 'fa-solid fa-box'}"></i>
-          </div>
-        </div>
-
-        <div class="product-card-info">
-          <span class="product-cat-label">${product.categoryLabel}</span>
-          <h4 class="product-card-title">${product.name}</h4>
-          <p class="product-card-snippet">${product.description}</p>
-        </div>
-
-        <div class="product-card-footer">
-          <div class="product-mkt-label">
-            <span>Available on:</span>
-          </div>
-          <div class="product-mkt-row">
-            ${mktButtons}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  container.innerHTML = filtered.map(renderProductCardHtml).join('');
 }
 
+// Global state for detail gallery
+let currentDetailImageIdx = 0;
+let currentDetailImages = [];
+
 /**
- * Open Product Detail View
+ * Open Product Detail View with 1:1 Image Gallery & Lightbox
  */
 function openProductDetail(productId) {
   const product = liveProductsList.find(p => p.id === productId) || 
@@ -413,8 +445,6 @@ function openProductDetail(productId) {
   const catEl = document.getElementById('detail-product-category');
   const descEl = document.getElementById('detail-product-desc');
   const featuredBadge = document.getElementById('detail-featured-badge');
-  const iconWrap = document.getElementById('detail-product-icon-wrap');
-  const iconEl = document.getElementById('detail-product-icon');
 
   if (titleEl) titleEl.textContent = normalized.name;
   if (catEl) catEl.textContent = normalized.categoryLabel;
@@ -429,22 +459,42 @@ function openProductDetail(productId) {
     }
   }
 
-  // Visual (Image or Icon)
-  if (iconWrap) {
-    iconWrap.style.backgroundColor = normalized.iconBg || '#2B6DEF';
-    if (normalized.imageUrl) {
-      iconWrap.innerHTML = `
-        <img 
-          src="${normalized.imageUrl}" 
-          alt="${normalized.name}" 
-          class="detail-visual-img" 
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-        />
-        <i class="${normalized.icon}" style="display: none; font-size: 54px; color: #FFFFFF;"></i>
+  // Visual 1:1 Image Gallery (1-3 images)
+  const galleryTrack = document.getElementById('detail-gallery-track');
+  const galleryDots = document.getElementById('detail-gallery-dots');
+  const images = (normalized.images && normalized.images.length > 0) ? normalized.images : [normalized.imageUrl].filter(Boolean);
+
+  currentDetailImages = images;
+  currentDetailImageIdx = 0;
+
+  if (galleryTrack) {
+    if (images.length === 0) {
+      galleryTrack.innerHTML = `
+        <div class="detail-gallery-slide" style="background-color: ${normalized.iconBg || '#2B6DEF'};">
+          <i class="${normalized.icon || 'fa-solid fa-box'}" style="font-size: 64px; color: #FFFFFF;"></i>
+        </div>
       `;
+      if (galleryDots) galleryDots.classList.add('hidden');
     } else {
-      iconWrap.innerHTML = `<i class="${normalized.icon || 'fa-solid fa-box'}" style="font-size: 54px; color: #FFFFFF;"></i>`;
+      galleryTrack.innerHTML = images.map((imgUrl, idx) => `
+        <div class="detail-gallery-slide" onclick="openLightboxImage(${idx})" title="Tap to zoom">
+          <img src="${imgUrl}" alt="${normalized.name} image ${idx + 1}" onerror="this.src='https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1000&auto=format&fit=crop&q=80'" />
+        </div>
+      `).join('');
+
+      if (galleryDots) {
+        if (images.length > 1) {
+          galleryDots.classList.remove('hidden');
+          galleryDots.innerHTML = images.map((_, idx) => `
+            <div class="gallery-dot ${idx === 0 ? 'active' : ''}" onclick="goToDetailGallerySlide(${idx})"></div>
+          `).join('');
+        } else {
+          galleryDots.classList.add('hidden');
+        }
+      }
+      setupDetailGallerySwipe();
     }
+    updateDetailGallerySlidePosition();
   }
 
   // Large Branded Marketplace Referral Links
@@ -550,6 +600,92 @@ function openProductDetail(productId) {
   }
 
   showShopSubView('shop-view-detail');
+}
+
+function updateDetailGallerySlidePosition() {
+  const track = document.getElementById('detail-gallery-track');
+  if (track) {
+    track.style.transform = `translateX(-${currentDetailImageIdx * 100}%)`;
+  }
+  const dots = document.querySelectorAll('.gallery-dot');
+  dots.forEach((dot, idx) => {
+    if (idx === currentDetailImageIdx) dot.classList.add('active');
+    else dot.classList.remove('active');
+  });
+}
+
+function goToDetailGallerySlide(idx) {
+  if (idx >= 0 && idx < currentDetailImages.length) {
+    currentDetailImageIdx = idx;
+    updateDetailGallerySlidePosition();
+  }
+}
+
+function setupDetailGallerySwipe() {
+  const container = document.getElementById('detail-gallery-container');
+  if (!container) return;
+  let startX = 0;
+  let endX = 0;
+
+  container.ontouchstart = (e) => {
+    startX = e.changedTouches[0].screenX;
+  };
+  container.ontouchend = (e) => {
+    endX = e.changedTouches[0].screenX;
+    const diff = endX - startX;
+    if (Math.abs(diff) > 35 && currentDetailImages.length > 1) {
+      if (diff < 0) {
+        if (currentDetailImageIdx < currentDetailImages.length - 1) {
+          currentDetailImageIdx++;
+          updateDetailGallerySlidePosition();
+        }
+      } else {
+        if (currentDetailImageIdx > 0) {
+          currentDetailImageIdx--;
+          updateDetailGallerySlidePosition();
+        }
+      }
+    }
+  };
+}
+
+/* Lightbox Functions */
+function openLightboxImage(idx) {
+  if (!currentDetailImages || currentDetailImages.length === 0) return;
+  const modal = document.getElementById('product-lightbox-modal');
+  const imgEl = document.getElementById('lightbox-img');
+  const counterEl = document.getElementById('lightbox-counter');
+
+  currentDetailImageIdx = idx;
+  if (imgEl) {
+    imgEl.src = currentDetailImages[idx];
+    imgEl.classList.remove('zoomed');
+  }
+  if (counterEl) {
+    if (currentDetailImages.length > 1) {
+      counterEl.classList.remove('hidden');
+      counterEl.textContent = `${idx + 1} / ${currentDetailImages.length}`;
+    } else {
+      counterEl.classList.add('hidden');
+    }
+  }
+  if (modal) modal.classList.remove('hidden');
+}
+
+function openLightboxFromDetail() {
+  openLightboxImage(currentDetailImageIdx || 0);
+}
+
+function closeProductLightbox(e) {
+  const modal = document.getElementById('product-lightbox-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function toggleLightboxZoom() {
+  const imgEl = document.getElementById('lightbox-img');
+  if (imgEl) {
+    imgEl.classList.toggle('zoomed');
+  }
 }
 
 /**
@@ -820,7 +956,16 @@ function openAddProductForm() {
   document.getElementById('prod-form-name').value = '';
   document.getElementById('prod-form-category').value = 'books';
   document.getElementById('prod-form-desc').value = '';
-  document.getElementById('prod-form-image-url').value = '';
+  
+  // Reset all 3 image inputs
+  for (let i = 1; i <= 3; i++) {
+    const urlInput = document.getElementById(`prod-form-image-url-${i}`) || (i === 1 ? document.getElementById('prod-form-image-url') : null);
+    const statusEl = document.getElementById(`prod-upload-status-${i}`) || (i === 1 ? document.getElementById('prod-upload-status') : null);
+    if (urlInput) urlInput.value = '';
+    if (statusEl) statusEl.className = 'upload-status-box hidden';
+    handleImagePreviewInput('', i);
+  }
+
   document.getElementById('prod-form-flipkart').value = '';
   document.getElementById('prod-form-amazon').value = '';
   document.getElementById('prod-form-meesho').value = '';
@@ -830,7 +975,6 @@ function openAddProductForm() {
   document.getElementById('prod-form-pinned').checked = false;
   document.getElementById('prod-form-active').checked = true;
 
-  handleImagePreviewInput('');
   showShopSubView('shop-view-admin-form');
 }
 
@@ -850,19 +994,39 @@ function openEditProductForm(productId) {
   const formTitle = document.getElementById('admin-form-title');
   const submitBtn = document.getElementById('prod-form-submit-btn');
   const deleteBtn = document.getElementById('prod-form-delete-btn');
-  const statusBox = document.getElementById('prod-upload-status');
 
   if (formTitle) formTitle.textContent = 'Edit Product';
   if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Update Product</span>';
   if (deleteBtn) deleteBtn.classList.remove('hidden');
-  if (statusBox) statusBox.className = 'upload-status-box hidden';
 
   // Populate fields
   document.getElementById('prod-form-id').value = product.id;
   document.getElementById('prod-form-name').value = product.name;
   document.getElementById('prod-form-category').value = product.category || 'books';
   document.getElementById('prod-form-desc').value = product.description;
-  document.getElementById('prod-form-image-url').value = product.imageUrl || '';
+
+  // Populate up to 3 image inputs
+  const img1 = product.imageUrl || '';
+  const img2 = product.imageUrl2 || '';
+  const img3 = product.imageUrl3 || '';
+
+  const el1 = document.getElementById('prod-form-image-url-1') || document.getElementById('prod-form-image-url');
+  const el2 = document.getElementById('prod-form-image-url-2');
+  const el3 = document.getElementById('prod-form-image-url-3');
+
+  if (el1) el1.value = img1;
+  if (el2) el2.value = img2;
+  if (el3) el3.value = img3;
+
+  handleImagePreviewInput(img1, 1);
+  handleImagePreviewInput(img2, 2);
+  handleImagePreviewInput(img3, 3);
+
+  for (let i = 1; i <= 3; i++) {
+    const statusEl = document.getElementById(`prod-upload-status-${i}`) || (i === 1 ? document.getElementById('prod-upload-status') : null);
+    if (statusEl) statusEl.className = 'upload-status-box hidden';
+  }
+
   document.getElementById('prod-form-flipkart').value = product.flipkartUrl || '';
   document.getElementById('prod-form-amazon').value = product.amazonUrl || '';
   document.getElementById('prod-form-meesho').value = product.meeshoUrl || '';
@@ -872,15 +1036,14 @@ function openEditProductForm(productId) {
   document.getElementById('prod-form-pinned').checked = !!product.isPinned;
   document.getElementById('prod-form-active').checked = !!product.isActive;
 
-  handleImagePreviewInput(product.imageUrl || '');
   showShopSubView('shop-view-admin-form');
 }
 
 /**
- * Live Image Preview Update
+ * Live Image Preview Update for Image 1, 2, or 3
  */
-function handleImagePreviewInput(url) {
-  const previewBox = document.getElementById('prod-form-image-preview');
+function handleImagePreviewInput(url, num = 1) {
+  const previewBox = document.getElementById(`prod-form-image-preview-${num}`) || document.getElementById('prod-form-image-preview');
   if (!previewBox) return;
 
   const cleanUrl = (url || '').trim();
@@ -888,7 +1051,7 @@ function handleImagePreviewInput(url) {
     previewBox.innerHTML = `
       <img 
         src="${cleanUrl}" 
-        alt="Preview" 
+        alt="Preview ${num}" 
         onerror="this.parentElement.innerHTML='<div class=\\'preview-empty-state\\'><i class=\\'fa-solid fa-circle-exclamation\\'></i><span>Invalid image URL</span></div>';" 
       />
     `;
@@ -896,7 +1059,7 @@ function handleImagePreviewInput(url) {
     previewBox.innerHTML = `
       <div class="preview-empty-state">
         <i class="fa-regular fa-image"></i>
-        <span>No image URL yet</span>
+        <span>No image ${num} yet</span>
       </div>
     `;
   }
@@ -905,12 +1068,12 @@ function handleImagePreviewInput(url) {
 /**
  * Handle image file selection and upload to Supabase Storage bucket 'shop'
  */
-async function handleProductImageFileChange(input) {
+async function handleProductImageFileChange(input, num = 1) {
   const file = input?.files?.[0];
   if (!file) return;
 
-  const statusBox = document.getElementById('prod-upload-status');
-  const urlInput = document.getElementById('prod-form-image-url');
+  const statusBox = document.getElementById(`prod-upload-status-${num}`) || document.getElementById('prod-upload-status');
+  const urlInput = document.getElementById(`prod-form-image-url-${num}`) || document.getElementById('prod-form-image-url');
 
   if (file.size > 5 * 1024 * 1024) {
     if (statusBox) {
@@ -940,7 +1103,7 @@ async function handleProductImageFileChange(input) {
 
     if (urlInput) {
       urlInput.value = publicUrl;
-      handleImagePreviewInput(publicUrl);
+      handleImagePreviewInput(publicUrl, num);
     }
 
     if (statusBox) {
@@ -988,7 +1151,7 @@ async function uploadProductImageToSupabase(file) {
 }
 
 /**
- * Handle Save Product (Insert or Update)
+ * Handle Save Product (Insert or Update with up to 3 images)
  */
 async function handleSaveProduct(event) {
   event.preventDefault();
@@ -1000,7 +1163,16 @@ async function handleSaveProduct(event) {
   const name = document.getElementById('prod-form-name').value.trim();
   const category = document.getElementById('prod-form-category').value;
   const description = document.getElementById('prod-form-desc').value.trim();
-  const imageUrl = document.getElementById('prod-form-image-url').value.trim();
+
+  // 3 Images
+  const el1 = document.getElementById('prod-form-image-url-1') || document.getElementById('prod-form-image-url');
+  const el2 = document.getElementById('prod-form-image-url-2');
+  const el3 = document.getElementById('prod-form-image-url-3');
+
+  const imageUrl1 = (el1?.value || '').trim();
+  const imageUrl2 = (el2?.value || '').trim();
+  const imageUrl3 = (el3?.value || '').trim();
+
   const flipkartUrl = document.getElementById('prod-form-flipkart').value.trim();
   const amazonUrl = document.getElementById('prod-form-amazon').value.trim();
   const meeshoUrl = document.getElementById('prod-form-meesho').value.trim();
@@ -1024,7 +1196,9 @@ async function handleSaveProduct(event) {
     name: name,
     category: category,
     description: description,
-    image_url: imageUrl,
+    image_url: imageUrl1,
+    image_url_2: imageUrl2,
+    image_url_3: imageUrl3,
     flipkart_url: flipkartUrl,
     amazon_url: amazonUrl,
     meesho_url: meeshoUrl,
@@ -1274,19 +1448,38 @@ function renderSaleStrip(saleInfo) {
    ========================================================================== */
 
 /**
- * Load shop banners from Supabase table shop_banners where is_active = true
+ * Load shop banners from Supabase table shop_banners with Daily logic:
+ * - Prefer banners where is_active = true AND show_date = today's date (YYYY-MM-DD)
+ * - If none for today, show is_active banners ordered by sort_order
  */
 async function loadShopBanners() {
+  const todayStr = new Date().toISOString().split('T')[0];
+
   try {
     if (window.sb) {
-      const { data, error } = await window.sb
+      // 1. Check for today's daily banners
+      const { data: dailyBanners, error: dailyErr } = await window.sb
+        .from('shop_banners')
+        .select('*')
+        .eq('is_active', true)
+        .eq('show_date', todayStr)
+        .order('sort_order', { ascending: true });
+
+      if (!dailyErr && Array.isArray(dailyBanners) && dailyBanners.length > 0) {
+        shopBannersList = dailyBanners;
+        renderBannerSlider();
+        return;
+      }
+
+      // 2. Fall back to all active banners ordered by sort_order
+      const { data: allBanners, error: allErr } = await window.sb
         .from('shop_banners')
         .select('*')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
-        shopBannersList = data;
+      if (!allErr && Array.isArray(allBanners) && allBanners.length > 0) {
+        shopBannersList = allBanners;
         renderBannerSlider();
         return;
       }
@@ -1295,13 +1488,30 @@ async function loadShopBanners() {
     console.warn('Supabase shop_banners fetch notice:', err);
   }
 
-  // If no banners in DB or error -> fallback to default hero
-  shopBannersList = [];
+  // Fallback to default educational banners
+  shopBannersList = [
+    {
+      id: 'default_b1',
+      image_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1000&auto=format&fit=crop&q=80',
+      title: 'NCERT & Board Exam Special Books',
+      link_url: '',
+      sort_order: 1,
+      is_active: true
+    },
+    {
+      id: 'default_b2',
+      image_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1000&auto=format&fit=crop&q=80',
+      title: 'Top Handwritten Formula Books & Kits',
+      link_url: '',
+      sort_order: 2,
+      is_active: true
+    }
+  ];
   renderBannerSlider();
 }
 
 /**
- * Render the banner slider track & dots, or show default hero
+ * Render the banner slider track & dots, with touch swipe support
  */
 function renderBannerSlider() {
   const sliderContainer = document.getElementById('shop-banner-slider-container');
@@ -1367,9 +1577,42 @@ function renderBannerSlider() {
     }
   }
 
+  setupBannerTouchSwipe();
   updateBannerSlidePosition();
   startBannerAutoSlide();
   updateAdminPillVisibility();
+}
+
+/**
+ * Mobile Touch Swipe left/right for banner carousel
+ */
+function setupBannerTouchSwipe() {
+  const container = document.getElementById('shop-banner-slider-container');
+  if (!container) return;
+
+  let startX = 0;
+  let endX = 0;
+
+  container.ontouchstart = (e) => {
+    startX = e.changedTouches[0].screenX;
+    stopBannerAutoSlide();
+  };
+
+  container.ontouchend = (e) => {
+    endX = e.changedTouches[0].screenX;
+    const diff = endX - startX;
+    if (Math.abs(diff) > 35 && shopBannersList.length > 1) {
+      if (diff < 0) {
+        // Swipe left -> next
+        currentBannerIndex = (currentBannerIndex + 1) % shopBannersList.length;
+      } else {
+        // Swipe right -> prev
+        currentBannerIndex = (currentBannerIndex - 1 + shopBannersList.length) % shopBannersList.length;
+      }
+      updateBannerSlidePosition();
+    }
+    startBannerAutoSlide();
+  };
 }
 
 /**
@@ -1663,6 +1906,7 @@ async function handleSaveBanner(event) {
   const imageUrl = document.getElementById('banner-form-image-url').value.trim();
   const title = document.getElementById('banner-form-title').value.trim();
   const linkUrl = document.getElementById('banner-form-link-url').value.trim();
+  const showDate = document.getElementById('banner-form-show-date')?.value?.trim() || null;
   const sortOrder = parseInt(document.getElementById('banner-form-order').value, 10) || 1;
   const isActive = document.getElementById('banner-form-active').checked;
 
@@ -1680,6 +1924,7 @@ async function handleSaveBanner(event) {
     image_url: imageUrl,
     title: title,
     link_url: linkUrl,
+    show_date: showDate,
     sort_order: sortOrder,
     is_active: isActive
   };

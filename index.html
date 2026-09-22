@@ -509,23 +509,111 @@
                 </div>
               </div>
 
-              <!-- Subject Filter Chips -->
-              <div class="test-filter-row">
-                <button type="button" class="test-filter-chip active" data-filter="all" onclick="filterTests('all')">All Tests</button>
-                <button type="button" class="test-filter-chip" data-filter="science" onclick="filterTests('science')">Science</button>
-                <button type="button" class="test-filter-chip" data-filter="mathematics" onclick="filterTests('mathematics')">Mathematics</button>
-              </div>
-
               <!-- Recent Result Banner (Injected if available) -->
               <div id="test-recent-banner" class="test-recent-wrapper hidden"></div>
 
-              <!-- Available Tests Header -->
-              <div class="section-header" style="padding: 12px 20px 8px 20px;">
-                <h4 class="section-title">Available Mock Tests</h4>
-                <span class="test-count-badge">4 Tests</span>
+              <!-- NEW START FLOW CARD -->
+              <div class="card test-start-flow-card">
+                <div class="flow-card-header">
+                  <div class="flow-step-icon"><i class="fa-solid fa-sliders"></i></div>
+                  <div>
+                    <h4 class="flow-card-title">Configure Mock Test</h4>
+                    <p class="flow-card-desc">Select syllabus, chapters, and duration</p>
+                  </div>
+                </div>
+
+                <!-- 1. Class Selection -->
+                <div class="flow-group">
+                  <label class="flow-label"><i class="fa-solid fa-graduation-cap"></i> Select Class</label>
+                  <div class="flow-chips-row" id="test-class-chips">
+                    <button type="button" class="flow-chip" data-class="Class 9" onclick="selectTestClass('Class 9')">Class 9</button>
+                    <button type="button" class="flow-chip active" data-class="Class 10" onclick="selectTestClass('Class 10')">Class 10</button>
+                    <button type="button" class="flow-chip" data-class="Class 11" onclick="selectTestClass('Class 11')">Class 11</button>
+                    <button type="button" class="flow-chip" data-class="Class 12" onclick="selectTestClass('Class 12')">Class 12</button>
+                  </div>
+                </div>
+
+                <!-- Stream Selection (Visible for Class 11/12) -->
+                <div class="flow-group hidden" id="test-stream-group">
+                  <label class="flow-label"><i class="fa-solid fa-compass"></i> Select Stream</label>
+                  <div class="flow-chips-row" id="test-stream-chips">
+                    <button type="button" class="flow-chip active" data-stream="Science" onclick="selectTestStream('Science')">Science</button>
+                    <button type="button" class="flow-chip" data-stream="Commerce" onclick="selectTestStream('Commerce')">Commerce</button>
+                    <button type="button" class="flow-chip" data-stream="Arts" onclick="selectTestStream('Arts')">Arts</button>
+                  </div>
+                </div>
+
+                <!-- 2. Subject Selection -->
+                <div class="flow-group">
+                  <label class="flow-label"><i class="fa-solid fa-book-open"></i> Select Subject</label>
+                  <div class="flow-subjects-scroll" id="test-subjects-chips">
+                    <!-- Populated dynamically based on class & stream -->
+                  </div>
+                </div>
+
+                <!-- 3. Chapter(s) Multi-Select -->
+                <div class="flow-group">
+                  <div class="flow-label-with-action">
+                    <label class="flow-label"><i class="fa-solid fa-list-check"></i> Select Chapter(s)</label>
+                    <button type="button" class="flow-select-all-btn" id="test-select-all-chapters-btn" onclick="toggleSelectAllChapters()">
+                      Select All
+                    </button>
+                  </div>
+                  <div class="flow-chapters-checklist" id="test-chapters-checklist">
+                    <!-- Checkbox items injected dynamically -->
+                  </div>
+                </div>
+
+                <!-- Question Count Rule Indicator -->
+                <div class="flow-rule-strip">
+                  <div class="rule-icon-box"><i class="fa-solid fa-circle-info"></i></div>
+                  <div class="rule-text-box">
+                    <span class="rule-title">Question Count Rules:</span>
+                    <span class="rule-desc">1 ch = 10 Qs · 2 ch = 20 Qs · 3 ch = 30 Qs · All ch = 100 Qs</span>
+                  </div>
+                  <div class="rule-count-pill" id="test-calculated-qcount">10 Questions</div>
+                </div>
+
+                <!-- 4. Duration (Minutes) Selection -->
+                <div class="flow-group">
+                  <label class="flow-label"><i class="fa-regular fa-clock"></i> Test Duration (Minutes)</label>
+                  <div class="flow-duration-row">
+                    <div class="flow-chips-row" id="test-duration-presets">
+                      <button type="button" class="flow-chip" data-min="10" onclick="selectTestDuration(10)">10 min</button>
+                      <button type="button" class="flow-chip active" data-min="15" onclick="selectTestDuration(15)">15 min</button>
+                      <button type="button" class="flow-chip" data-min="20" onclick="selectTestDuration(20)">20 min</button>
+                      <button type="button" class="flow-chip" data-min="30" onclick="selectTestDuration(30)">30 min</button>
+                    </div>
+                    <div class="flow-custom-duration">
+                      <input 
+                        type="number" 
+                        id="test-custom-duration-input" 
+                        class="form-input flow-duration-input" 
+                        min="1" 
+                        max="180" 
+                        placeholder="Custom" 
+                        value="15"
+                        onchange="handleCustomDurationChange(this.value)"
+                      />
+                      <span class="flow-min-unit">min</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Start Action Button -->
+                <div class="flow-start-action">
+                  <button type="button" id="btn-start-configured-test" class="btn btn-primary btn-block btn-start-flow" onclick="handleStartConfiguredTest()">
+                    <i class="fa-solid fa-play"></i>
+                    <span id="test-start-cta-text">Start Test (10 Questions · 15 Mins)</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Test Cards List -->
+              <!-- Available Pre-Configured Tests -->
+              <div class="section-header" style="padding: 16px 20px 8px 20px;">
+                <h4 class="section-title">Quick Subject Mocks</h4>
+                <span class="test-count-badge">Ready to Play</span>
+              </div>
               <div id="test-cards-list" class="test-cards-grid">
                 <!-- Injected dynamically by test.js -->
               </div>
@@ -668,214 +756,8 @@
           </div>
         </section>
 
-        <!-- 8) CHALLENGES TAB (Part 4: Challenges Module) -->
-        <section id="tab-content-challenges" class="tab-page">
-          <div class="chal-container">
+        <!-- 8) SHOP TAB (Part 5: User Shop UI) -->
 
-            <!-- 1) CHALLENGES HOME VIEW -->
-            <div id="chal-view-home" class="chal-sub-view active">
-              <!-- Top Challenges Header -->
-              <div class="chal-header">
-                <div>
-                  <h3 class="chal-home-title">Challenges</h3>
-                  <p class="chal-home-subtitle">Daily practice · Climb the rank</p>
-                </div>
-                <div class="chal-header-badge">
-                  <i class="fa-solid fa-trophy"></i>
-                  <span>Class 10</span>
-                </div>
-              </div>
-
-              <!-- Top Rank Strip -->
-              <div class="chal-rank-strip-wrapper">
-                <div class="card chal-rank-card">
-                  <div class="rank-card-left">
-                    <div class="rank-avatar">
-                      <span id="chal-student-avatar">NW</span>
-                    </div>
-                    <div class="rank-user-meta">
-                      <span id="chal-student-name" class="rank-user-name">Student</span>
-                      <span class="rank-badge-text"><i class="fa-solid fa-award"></i> Rank 24 of 1,248</span>
-                    </div>
-                  </div>
-                  <div class="rank-card-right">
-                    <div class="rank-accuracy-pill">
-                      <span class="acc-val">92%</span>
-                      <span class="acc-lbl">Accuracy</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 2) DAILY CHALLENGE CARD -->
-              <div class="chal-section-block">
-                <div class="chal-section-header">
-                  <h4 class="section-title">Today's Daily Sprint</h4>
-                  <span class="chal-live-tag"><i class="fa-solid fa-circle"></i> Active</span>
-                </div>
-                <div id="chal-daily-card-container">
-                  <!-- Injected by challenges.js -->
-                </div>
-              </div>
-
-              <!-- 3) WEEKLY CHALLENGE CARD -->
-              <div class="chal-section-block">
-                <div class="chal-section-header">
-                  <h4 class="section-title">Weekly Target</h4>
-                </div>
-                <div id="chal-weekly-card-container">
-                  <!-- Injected by challenges.js -->
-                </div>
-              </div>
-
-              <!-- 4) MORE CHALLENGES LIST -->
-              <div class="chal-section-block" style="margin-bottom: 24px;">
-                <div class="chal-section-header">
-                  <h4 class="section-title">More Practice Sprints</h4>
-                  <span class="test-count-badge">3 Sprints</span>
-                </div>
-                <div id="chal-more-list" class="chal-cards-grid">
-                  <!-- Injected by challenges.js -->
-                </div>
-              </div>
-
-            </div>
-
-            <!-- 2) LIVE CHALLENGE SCREEN -->
-            <div id="chal-view-live" class="chal-sub-view">
-              <!-- Sticky Live Header -->
-              <div class="live-test-header">
-                <button type="button" class="btn-live-quit" onclick="handleQuitLiveChallenge()" title="Quit Challenge">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
-                <div class="live-title-group">
-                  <h4 id="live-chal-title" class="live-test-title">Science Sprint</h4>
-                  <span id="live-chal-q-counter" class="live-q-counter">Q 1 of 5</span>
-                </div>
-                <div id="live-chal-timer-badge" class="live-timer-badge">
-                  <i class="fa-regular fa-clock"></i>
-                  <span id="live-chal-timer-text">05:00</span>
-                </div>
-              </div>
-
-              <!-- Question Jump Strip -->
-              <div class="live-strip-wrapper">
-                <div id="live-chal-q-strip" class="live-q-strip">
-                  <!-- Injected dynamically -->
-                </div>
-              </div>
-
-              <!-- Question Content Box -->
-              <div class="live-question-box">
-                <div class="card live-question-card">
-                  <div class="q-header-row">
-                    <span class="q-badge-circle" id="live-chal-q-badge">1</span>
-                    <span class="q-type-tag">Daily Sprint MCQ</span>
-                  </div>
-                  <h4 id="live-chal-q-text" class="live-question-text">
-                    Question text will appear here...
-                  </h4>
-                </div>
-
-                <div id="live-chal-options-container" class="live-options-list">
-                  <!-- Options injected dynamically -->
-                </div>
-              </div>
-
-              <!-- Bottom Sticky Navigation Bar -->
-              <div class="live-bottom-bar">
-                <button type="button" id="chal-prev-btn" class="btn btn-live-nav" onclick="prevChallengeQuestion()" disabled>
-                  <i class="fa-solid fa-arrow-left"></i>
-                  <span>Previous</span>
-                </button>
-                <button type="button" id="chal-next-btn" class="btn btn-primary btn-live-nav" onclick="nextChallengeQuestion()">
-                  <span>Next</span>
-                  <i class="fa-solid fa-arrow-right"></i>
-                </button>
-                <button type="button" id="chal-submit-btn" class="btn btn-primary btn-live-submit hidden" onclick="handleChallengeSubmitClick()">
-                  <i class="fa-solid fa-check"></i>
-                  <span>Finish Challenge</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 3) CHALLENGE RESULT SCREEN -->
-            <div id="chal-view-result" class="chal-sub-view">
-              <div class="sub-nav-header">
-                <button type="button" class="btn-sub-back" onclick="returnToChallengesHome()" title="Back to Challenges">
-                  <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <div class="sub-nav-title-group">
-                  <h3 class="sub-nav-title">Challenge Summary</h3>
-                  <span id="chal-result-title" class="sub-nav-caption">Science Sprint</span>
-                </div>
-              </div>
-
-              <!-- Score Hero Card -->
-              <div class="card result-hero-card">
-                <div class="result-score-ring">
-                  <span id="chal-result-score-val" class="result-pct-num">5 / 5</span>
-                  <span class="result-pct-lbl">Final Score</span>
-                </div>
-                <div id="chal-result-pct-badge" class="result-status-badge status-excellent">
-                  100% Accuracy
-                </div>
-                <p id="chal-result-message" class="result-feedback-text">
-                  Awesome sprint! You nailed this daily practice challenge.
-                </p>
-
-                <!-- 4 Metrics Grid -->
-                <div class="result-metrics-grid">
-                  <div class="metric-item">
-                    <div class="metric-icon-box metric-green"><i class="fa-solid fa-check"></i></div>
-                    <span id="chal-metric-correct" class="metric-val">5</span>
-                    <span class="metric-lbl">Correct</span>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-icon-box metric-red"><i class="fa-solid fa-xmark"></i></div>
-                    <span id="chal-metric-wrong" class="metric-val">0</span>
-                    <span class="metric-lbl">Wrong</span>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-icon-box metric-gray"><i class="fa-regular fa-circle-pause"></i></div>
-                    <span id="chal-metric-skipped" class="metric-val">0</span>
-                    <span class="metric-lbl">Skipped</span>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-icon-box metric-blue"><i class="fa-regular fa-clock"></i></div>
-                    <span id="chal-metric-time" class="metric-val">2m 45s</span>
-                    <span class="metric-lbl">Time</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Actions -->
-              <div class="result-actions-card">
-                <button type="button" class="btn btn-primary btn-block btn-result-act" onclick="retakeCurrentChallenge()">
-                  <i class="fa-solid fa-rotate-right"></i>
-                  <span>Retake Sprint</span>
-                </button>
-                <button type="button" class="btn btn-secondary-outline btn-block btn-result-act" onclick="returnToChallengesHome()">
-                  <i class="fa-solid fa-arrow-left"></i>
-                  <span>Back to Challenges</span>
-                </button>
-              </div>
-
-              <!-- Review Questions -->
-              <div class="section-block">
-                <div class="section-header">
-                  <h4 class="section-title">Sprint Review</h4>
-                </div>
-                <div id="chal-review-list" class="review-questions-list">
-                  <!-- Injected dynamically -->
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        <!-- 9) SHOP TAB (Part 5: User Shop UI) -->
         <section id="tab-content-shop" class="tab-page">
           <div class="shop-container">
 
@@ -957,10 +839,23 @@
                 </div>
               </div>
 
-              <!-- Featured / All Products Section -->
+              <!-- Recommended Section (is_featured OR is_pinned first) -->
+              <div id="shop-recommended-section" class="shop-section-block">
+                <div class="shop-section-header">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <h4 class="section-title">Recommended</h4>
+                    <span class="product-featured-badge" style="position: static; font-size: 11px;"><i class="fa-solid fa-sparkles"></i> Top Picks</span>
+                  </div>
+                </div>
+                <div id="shop-recommended-grid" class="shop-products-grid">
+                  <!-- Recommended product cards injected by shop.js -->
+                </div>
+              </div>
+
+              <!-- All Products Section -->
               <div class="shop-section-block">
                 <div class="shop-section-header">
-                  <h4 class="section-title">Student Collection</h4>
+                  <h4 id="shop-catalog-title" class="section-title">All Study Gear</h4>
                   <span id="shop-products-count" class="test-count-badge">8 Items</span>
                 </div>
                 <div id="shop-products-grid" class="shop-products-grid">
@@ -982,13 +877,19 @@
               </div>
 
               <div class="product-detail-content">
-                <!-- Large Image / Icon Hero Box -->
+                <!-- 1:1 Image Gallery / Lightbox Box -->
                 <div class="card detail-visual-card">
                   <div id="detail-featured-badge" class="product-featured-badge hidden">
                     <i class="fa-solid fa-star"></i> Featured
                   </div>
-                  <div id="detail-product-icon-wrap" class="detail-icon-large">
-                    <i id="detail-product-icon" class="fa-solid fa-book-bookmark"></i>
+                  <div id="detail-gallery-container" class="detail-gallery-container">
+                    <div id="detail-gallery-track" class="detail-gallery-track">
+                      <!-- Slides injected dynamically by shop.js -->
+                    </div>
+                    <div id="detail-gallery-dots" class="detail-gallery-dots hidden"></div>
+                    <div class="detail-gallery-zoom-hint" onclick="openLightboxFromDetail()" title="Tap to zoom full screen">
+                      <i class="fa-solid fa-expand"></i>
+                    </div>
                   </div>
                 </div>
 
@@ -1178,55 +1079,67 @@
                     </div>
                   </div>
 
-                  <!-- Product Image & Supabase Storage -->
+                  <!-- Product Images (1, 2, 3) & Supabase Storage -->
                   <div class="card form-section-card">
-                    <h4 class="form-section-title"><i class="fa-solid fa-image"></i> Product Image</h4>
-                    <p class="form-section-caption">Upload directly to Supabase Storage bucket 'shop' or paste image URL.</p>
+                    <h4 class="form-section-title"><i class="fa-solid fa-images"></i> Product Images (Up to 3)</h4>
+                    <p class="form-section-caption">Upload to bucket 'shop' or paste URLs. Image 1 is the main product card photo.</p>
 
-                    <div class="image-upload-wrapper">
-                      <!-- Hidden file input -->
-                      <input 
-                        type="file" 
-                        id="prod-form-file-input" 
-                        accept="image/*" 
-                        class="hidden" 
-                        onchange="handleProductImageFileChange(this)"
-                      />
-
+                    <!-- Image 1 (Main) -->
+                    <div class="image-upload-block" style="margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border-subtle);">
+                      <label class="form-label" style="font-weight: 700; color: var(--primary-blue);">Image 1 (Main Cover Photo) *</label>
+                      <input type="file" id="prod-form-file-input-1" accept="image/*" class="hidden" onchange="handleProductImageFileChange(this, 1)" />
                       <div class="upload-buttons-row">
-                        <button 
-                          type="button" 
-                          id="btn-upload-supabase-storage" 
-                          class="btn btn-secondary-outline btn-block" 
-                          onclick="document.getElementById('prod-form-file-input').click()"
-                        >
-                          <i class="fa-solid fa-cloud-arrow-up"></i>
-                          <span>Upload to Supabase Storage</span>
+                        <button type="button" class="btn btn-secondary-outline btn-block" onclick="document.getElementById('prod-form-file-input-1').click()">
+                          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Upload Image 1</span>
                         </button>
                       </div>
-
-                      <div id="prod-upload-status" class="upload-status-box hidden">
-                        <!-- Progress or success message -->
+                      <div id="prod-upload-status-1" class="upload-status-box hidden"></div>
+                      <div class="form-group" style="margin-top: 8px;">
+                        <input type="url" id="prod-form-image-url-1" class="form-input" placeholder="Image 1 URL (auto-filled or pasted)" oninput="handleImagePreviewInput(this.value, 1)" />
                       </div>
-
-                      <div class="form-group" style="margin-top: 10px;">
-                        <label class="form-label" for="prod-form-image-url">Public Image URL</label>
-                        <input 
-                          type="url" 
-                          id="prod-form-image-url" 
-                          class="form-input" 
-                          placeholder="https://... (or auto-filled after upload)" 
-                          oninput="handleImagePreviewInput(this.value)"
-                        />
-                      </div>
-
                       <div class="image-preview-container">
-                        <label class="form-label">Preview</label>
-                        <div id="prod-form-image-preview" class="prod-image-preview-box">
-                          <div class="preview-empty-state">
-                            <i class="fa-regular fa-image"></i>
-                            <span>No image URL yet</span>
-                          </div>
+                        <div id="prod-form-image-preview-1" class="prod-image-preview-box">
+                          <div class="preview-empty-state"><i class="fa-regular fa-image"></i> <span>No image 1</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Image 2 (Optional) -->
+                    <div class="image-upload-block" style="margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border-subtle);">
+                      <label class="form-label" style="font-weight: 700;">Image 2 (Optional Detail Photo)</label>
+                      <input type="file" id="prod-form-file-input-2" accept="image/*" class="hidden" onchange="handleProductImageFileChange(this, 2)" />
+                      <div class="upload-buttons-row">
+                        <button type="button" class="btn btn-secondary-outline btn-block" onclick="document.getElementById('prod-form-file-input-2').click()">
+                          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Upload Image 2</span>
+                        </button>
+                      </div>
+                      <div id="prod-upload-status-2" class="upload-status-box hidden"></div>
+                      <div class="form-group" style="margin-top: 8px;">
+                        <input type="url" id="prod-form-image-url-2" class="form-input" placeholder="Image 2 URL (optional)" oninput="handleImagePreviewInput(this.value, 2)" />
+                      </div>
+                      <div class="image-preview-container">
+                        <div id="prod-form-image-preview-2" class="prod-image-preview-box">
+                          <div class="preview-empty-state"><i class="fa-regular fa-image"></i> <span>No image 2</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Image 3 (Optional) -->
+                    <div class="image-upload-block">
+                      <label class="form-label" style="font-weight: 700;">Image 3 (Optional Angle/Spec Photo)</label>
+                      <input type="file" id="prod-form-file-input-3" accept="image/*" class="hidden" onchange="handleProductImageFileChange(this, 3)" />
+                      <div class="upload-buttons-row">
+                        <button type="button" class="btn btn-secondary-outline btn-block" onclick="document.getElementById('prod-form-file-input-3').click()">
+                          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Upload Image 3</span>
+                        </button>
+                      </div>
+                      <div id="prod-upload-status-3" class="upload-status-box hidden"></div>
+                      <div class="form-group" style="margin-top: 8px;">
+                        <input type="url" id="prod-form-image-url-3" class="form-input" placeholder="Image 3 URL (optional)" oninput="handleImagePreviewInput(this.value, 3)" />
+                      </div>
+                      <div class="image-preview-container">
+                        <div id="prod-form-image-preview-3" class="prod-image-preview-box">
+                          <div class="preview-empty-state"><i class="fa-regular fa-image"></i> <span>No image 3</span></div>
                         </div>
                       </div>
                     </div>
@@ -1455,6 +1368,17 @@
                       />
                     </div>
 
+                    <div class="form-group">
+                      <label class="form-label" for="banner-form-show-date">Target Show Date (Daily Banner)</label>
+                      <input 
+                        type="date" 
+                        id="banner-form-show-date" 
+                        class="form-input" 
+                        title="If set, this banner is prioritized on this date (YYYY-MM-DD)" 
+                      />
+                      <span style="font-size: 11px; color: var(--text-tertiary); display: block; margin-top: 4px;">Optional: Banner will be preferred on this specific date.</span>
+                    </div>
+
                     <div class="form-group-row">
                       <div class="form-group" style="flex: 1;">
                         <label class="form-label" for="banner-form-order">Sort Order Number *</label>
@@ -1639,7 +1563,7 @@
 
       </main>
 
-      <!-- Fixed Bottom Navigation (6 Tabs) -->
+      <!-- Fixed Bottom Navigation (5 Tabs: Home | Study | Test | Shop | Account) -->
       <nav class="bottom-nav">
         <button type="button" class="nav-item active" data-tab="home" onclick="switchNavTab('home')">
           <i class="nav-icon fa-solid fa-house"></i>
@@ -1654,11 +1578,6 @@
         <button type="button" class="nav-item" data-tab="test" onclick="switchNavTab('test')">
           <i class="nav-icon fa-solid fa-clipboard-check"></i>
           <span class="nav-label">Test</span>
-        </button>
-
-        <button type="button" class="nav-item" data-tab="challenges" onclick="switchNavTab('challenges')">
-          <i class="nav-icon fa-solid fa-trophy"></i>
-          <span class="nav-label">Challenges</span>
         </button>
 
         <button type="button" class="nav-item" data-tab="shop" onclick="switchNavTab('shop')">
@@ -2371,56 +2290,6 @@
       </div>
     </div>
 
-    <!-- 6) Challenge Quit Confirmation Modal -->
-    <div id="chal-quit-modal" class="app-modal hidden">
-      <div class="modal-backdrop" onclick="closeChallengeQuitModal()"></div>
-      <div class="modal-sheet quit-sheet">
-        <div class="modal-drag-handle"></div>
-        <div class="quit-modal-content">
-          <div class="quit-icon-circle danger">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-          </div>
-          <h4 class="quit-modal-title">Quit Challenge?</h4>
-          <p class="quit-modal-desc">
-            Your sprint progress will not be counted towards your daily practice.
-          </p>
-          <div class="quit-actions-row">
-            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeChallengeQuitModal()">
-              <span>Resume Sprint</span>
-            </button>
-            <button type="button" class="btn btn-danger-action btn-block" onclick="confirmQuitChallenge()">
-              <span>Quit Anyway</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 7) Challenge Submit Modal -->
-    <div id="chal-submit-modal" class="app-modal hidden">
-      <div class="modal-backdrop" onclick="closeChallengeSubmitModal()"></div>
-      <div class="modal-sheet quit-sheet">
-        <div class="modal-drag-handle"></div>
-        <div class="quit-modal-content">
-          <div class="quit-icon-circle warning">
-            <i class="fa-solid fa-clipboard-question"></i>
-          </div>
-          <h4 class="quit-modal-title">Finish Sprint?</h4>
-          <p id="chal-submit-warning-text" class="quit-modal-desc">
-            You have unattempted questions. Unanswered questions will be scored as skipped.
-          </p>
-          <div class="quit-actions-row">
-            <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeChallengeSubmitModal()">
-              <span>Review</span>
-            </button>
-            <button type="button" class="btn btn-primary btn-block" onclick="executeSubmitChallenge()">
-              <span>Finish Now</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 8) Full-Screen Offline Overlay -->
     <div id="offline-overlay" class="offline-overlay hidden">
       <div class="offline-modal-card card">
@@ -2531,6 +2400,20 @@
       </div>
     </div>
 
+
+    <!-- Product Lightbox Modal (Full-Screen Image Zoom) -->
+    <div id="product-lightbox-modal" class="product-lightbox-modal hidden" onclick="closeProductLightbox(event)">
+      <button type="button" class="btn-lightbox-close" onclick="closeProductLightbox()" title="Close Zoom">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="lightbox-content" onclick="event.stopPropagation()">
+        <img id="lightbox-img" src="" alt="Product Zoom" class="lightbox-img" onclick="toggleLightboxZoom()" />
+        <div id="lightbox-counter" class="lightbox-counter hidden">1 / 1</div>
+      </div>
+      <div class="lightbox-zoom-tip">
+        <i class="fa-solid fa-magnifying-glass-plus"></i> Tap image to toggle zoom
+      </div>
+    </div>
   </div>
 
   <!-- Application Logic Scripts -->
@@ -2539,8 +2422,6 @@
   <script src="js/study.js"></script>
   <script src="js/test-data.js"></script>
   <script src="js/test.js"></script>
-  <script src="js/challenges-data.js"></script>
-  <script src="js/challenges.js"></script>
   <script src="js/shop-data.js"></script>
   <script src="js/shop.js"></script>
   <script src="js/admin.js"></script>

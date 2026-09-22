@@ -286,15 +286,40 @@ function openChapterDetail(subjectId, chapterId) {
  */
 
 /**
- * Handle "Read" Action -> Opens ebookUrl in a new tab directly.
+ * Handle "Read" Action -> Opens e-book link directly in browser (Chrome).
  * Strictly no ad required.
+ * If stream-specific (11/12 Science/Arts/Commerce), matches that stream's books.
+ * If an e-book link is missing/empty, shows a clear message instead of breaking.
  * @param {Object} chapter 
  */
 function handleReadChapter(chapter) {
-  const pdfUrl = (chapter && chapter.ebookUrl) ? chapter.ebookUrl : 'https://ncert.nic.in/textbook/pdf/jemh101.pdf';
-  window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-  if (typeof showToast === 'function') {
-    showToast(`Opening NCERT textbook for ${chapter.title || 'Chapter'}...`, 'info');
+  if (!chapter) {
+    chapter = getChapterById(currentStudySubjectId, currentStudyChapterId);
+  }
+
+  const ebookUrl = (chapter && (chapter.ebookUrl || chapter.ebook_url)) ? (chapter.ebookUrl || chapter.ebook_url).trim() : '';
+
+  if (!ebookUrl) {
+    if (typeof showToast === 'function') {
+      showToast('E-book link coming soon for this chapter.', 'info');
+    } else {
+      alert('E-book link coming soon for this chapter.');
+    }
+    return;
+  }
+
+  // Open e-book directly in browser / Chrome
+  try {
+    const win = window.open(ebookUrl, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      window.location.href = ebookUrl;
+    }
+    if (typeof showToast === 'function') {
+      showToast(`Opening NCERT textbook for ${chapter.title || 'Chapter'}...`, 'info');
+    }
+  } catch (err) {
+    console.error('Error opening e-book URL:', err);
+    window.location.href = ebookUrl;
   }
 }
 

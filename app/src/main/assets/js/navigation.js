@@ -29,7 +29,7 @@ function showScreen(screenId) {
 
 /**
  * Switch Bottom Navigation Tab
- * @param {'home' | 'study' | 'test' | 'challenges' | 'shop' | 'account'} tabName
+ * @param {'home' | 'study' | 'test' | 'shop' | 'account'} tabName
  */
 function switchNavTab(tabName) {
   // Update nav buttons
@@ -61,14 +61,7 @@ function switchNavTab(tabName) {
   }
 
   if (tabName === 'test' && typeof initTestModule === 'function') {
-    const testList = document.getElementById('test-cards-list');
-    if (!testList || testList.children.length === 0) {
-      initTestModule();
-    }
-  }
-
-  if (tabName === 'challenges' && typeof initChallengesModule === 'function') {
-    initChallengesModule();
+    initTestModule();
   }
 
   if (tabName === 'shop' && typeof loadShopPage === 'function') {
