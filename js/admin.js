@@ -32,9 +32,13 @@ let editingQuestionId = null;
 
 /**
  * Check if the user is an admin
- * Rule: profiles.is_admin === true
+ * Rule: profiles.is_admin === true (Guest is NEVER admin)
  */
 function checkIsUserAdmin() {
+  if (typeof AppState !== 'undefined' && AppState.isGuest) {
+    return false;
+  }
+
   const profile = (typeof currentProfile !== 'undefined' && currentProfile) 
     ? currentProfile 
     : ((typeof AppState !== 'undefined' && AppState.user) ? AppState.user : null);
@@ -53,10 +57,43 @@ function checkIsUserAdmin() {
 }
 
 /**
+ * Load total anonymous guest accounts count in Admin Hub (Rule 5)
+ */
+async function loadAdminGuestCount() {
+  const el = document.getElementById('admin-guest-count-label');
+  if (!el) return;
+
+  try {
+    if (window.sb) {
+      const { data, error } = await window.sb
+        .from('app_analytics')
+        .select('counter_value')
+        .eq('id', 'guest_accounts')
+        .maybeSingle();
+
+      if (!error && data && typeof data.counter_value !== 'undefined') {
+        el.textContent = `${data.counter_value} Guest Accounts`;
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('Notice loading guest count:', err);
+  }
+  el.textContent = 'Active Guest Mode Supported';
+}
+
+/**
  * Open the Unified Admin Panel
  * Entry point from Account menu item "Admin Panel"
  */
 function openAdminPanel() {
+  if (typeof AppState !== 'undefined' && AppState.isGuest) {
+    if (typeof showToast === 'function') {
+      showToast('Admin Panel is not available in Guest mode.', 'error');
+    }
+    return;
+  }
+
   if (!checkIsUserAdmin()) {
     alert('Admin only');
     return;
@@ -64,6 +101,7 @@ function openAdminPanel() {
 
   showScreen('admin-screen');
   showAdminSubView('admin-view-hub');
+  loadAdminGuestCount();
 }
 
 /**

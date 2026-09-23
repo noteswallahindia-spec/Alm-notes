@@ -46,12 +46,17 @@ function showTestSubView(viewId) {
 
 /**
  * Load last saved result from localStorage
+ * Rule 4: Guest progress stored locally with nw_guest_ prefix
  */
 function loadSavedTestResult() {
   try {
-    const saved = localStorage.getItem('noteswallah_last_test_result');
+    const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
+    const key = isGuest ? 'nw_guest_last_test_result' : 'noteswallah_last_test_result';
+    const saved = localStorage.getItem(key);
     if (saved) {
       lastTestResult = JSON.parse(saved);
+    } else {
+      lastTestResult = null;
     }
   } catch (e) {
     console.warn('Could not read saved test result from localStorage', e);
@@ -60,10 +65,13 @@ function loadSavedTestResult() {
 
 /**
  * Save test result to localStorage
+ * Rule 4: Guest progress stored locally with nw_guest_ prefix
  */
 function saveTestResult(result) {
   try {
-    localStorage.setItem('noteswallah_last_test_result', JSON.stringify(result));
+    const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
+    const key = isGuest ? 'nw_guest_last_test_result' : 'noteswallah_last_test_result';
+    localStorage.setItem(key, JSON.stringify(result));
     lastTestResult = result;
   } catch (e) {
     console.warn('Could not save test result to localStorage', e);

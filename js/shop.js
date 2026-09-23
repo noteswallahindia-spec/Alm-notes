@@ -41,9 +41,13 @@ const CATEGORY_META = {
 
 /**
  * Check if the current logged in user has admin privileges
- * Rule: profiles.is_admin === true OR email in ADMIN_EMAILS
+ * Rule: profiles.is_admin === true OR email in ADMIN_EMAILS (Guest is NEVER admin)
  */
 function isCurrentUserAdmin() {
+  if (typeof AppState !== 'undefined' && AppState.isGuest) {
+    return false;
+  }
+
   const profile = (typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile : null;
   const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null;
   const email = (profile?.email || user?.email || '').toLowerCase().trim();
@@ -704,6 +708,15 @@ function closeProductDetail() {
  * Open Admin Dashboard (Security Checked)
  */
 async function openShopAdminDashboard() {
+  if (typeof AppState !== 'undefined' && AppState.isGuest) {
+    if (typeof showToast === 'function') {
+      showToast('Shop Manager is not available in Guest mode.', 'error');
+    } else {
+      alert('Shop Manager is not available in Guest mode.');
+    }
+    return;
+  }
+
   if (!isCurrentUserAdmin()) {
     alert('Admin only: You do not have permission to access the Shop Admin.');
     return;

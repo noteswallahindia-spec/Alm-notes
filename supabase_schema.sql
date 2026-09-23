@@ -220,3 +220,51 @@ ON storage.objects FOR SELECT USING (bucket_id = 'products');
 CREATE POLICY "Admins upload to products bucket"
 ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'products' AND public.is_admin());
 
+-- ==========================================================================
+-- GUEST ACCOUNTS COUNTER & RPC (ANONYMOUS TOTAL ONLY)
+-- Guest personal/progress data is NEVER written to Supabase profiles or any user table.
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS public.app_analytics (
+  id TEXT PRIMARY KEY,
+  counter_value BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Seed guest_accounts counter row
+INSERT INTO public.app_analytics (id, counter_value)
+VALUES ('guest_accounts', 0)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.app_analytics ENABLE ROW LEVEL SECURITY;
+
+-- Allow anon and authenticated users to read the analytics counter
+CREATE POLICY "Public read app_analytics"
+ON public.app_analytics FOR SELECT USING (true);
+
+-- Allow admins to update analytics if needed
+CREATE POLICY "Admins update app_analytics"
+ON public.app_analytics FOR ALL USING (public.is_admin());
+
+-- RPC function: increment_guest_count
+-- Called once per device when a student taps "Continue as Guest".
+-- Purely anonymous counter increment.
+CREATE OR REPLACE FUNCTION public.increment_guest_count()
+RETURNS BIGINT AS $$
+DECLARE
+  new_count BIGINT;
+BEGIN
+  INSERT INTO public.app_analytics (id, counter_value, updated_at)
+  VALUES ('guest_accounts', 1, timezone('utc'::text, now()))
+  ON CONFLICT (id) DO UPDATE
+  SET counter_value = public.app_analytics.counter_value + 1,
+      updated_at = timezone('utc'::text, now())
+  RETURNING counter_value INTO new_count;
+
+  RETURN new_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution permissions to anon and authenticated roles
+GRANT EXECUTE ON FUNCTION public.increment_guest_count() TO anon, authenticated;
+

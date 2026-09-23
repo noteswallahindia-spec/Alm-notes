@@ -147,6 +147,12 @@
         <span>Continue with Google</span>
       </button>
 
+      <!-- Continue as Guest -->
+      <button type="button" id="btn-guest-login" class="btn btn-guest btn-block" onclick="handleGuestLogin()">
+        <i class="fa-solid fa-user-clock"></i>
+        <span>Continue as Guest</span>
+      </button>
+
       <!-- Quick Demo Access / Help Note -->
       <div class="auth-footer-help">
         <p class="terms-text">By continuing, you agree to study smart & consistently with Notes Wallah.</p>
@@ -1449,6 +1455,22 @@
               </div>
             </div>
 
+            <!-- Guest Sync Banner (Visible only when in Guest Mode) -->
+            <div id="guest-sync-banner" class="card guest-sync-card hidden">
+              <div class="guest-sync-content">
+                <div class="guest-sync-icon">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div class="guest-sync-text">
+                  <h5>Save &amp; Sync Your Progress</h5>
+                  <p>You are currently browsing as Guest. Login or sign up to permanently save and sync your study notes, test scores, and bookmarks across devices.</p>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm guest-login-btn" onclick="openLoginFromGuest()">
+                <i class="fa-solid fa-right-to-bracket"></i> Login to Sync
+              </button>
+            </div>
+
             <!-- Settings Menu Rows -->
             <div class="card menu-card">
               <h4 class="menu-group-title">Preferences</h4>
@@ -1543,8 +1565,8 @@
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                   </div>
                   <div class="menu-row-text">
-                    <span class="menu-title text-danger">Logout</span>
-                    <span class="menu-caption">End current student session</span>
+                    <span id="account-logout-title" class="menu-title text-danger">Logout</span>
+                    <span id="account-logout-caption" class="menu-caption">End current student session</span>
                   </div>
                 </div>
                 <div class="menu-row-right">
@@ -1626,6 +1648,10 @@
               <span class="admin-welcome-badge"><i class="fa-solid fa-bolt"></i> Operations</span>
               <h3 class="admin-welcome-title">Control Center</h3>
               <p class="admin-welcome-sub">Manage study content, live store products, and student test banks across CBSE Class 9–12.</p>
+              <div class="admin-guest-counter-pill">
+                <i class="fa-solid fa-users"></i>
+                <span id="admin-guest-count-label">Loading Guest Accounts...</span>
+              </div>
             </div>
 
             <!-- Big Three Management Cards -->

@@ -16,6 +16,7 @@
 
 // Global AppState object for single source of truth across modules
 window.AppState = window.AppState || {
+  isGuest: false,
   user: {
     id: null,
     name: 'Student',
@@ -191,6 +192,8 @@ async function handleLogin(event) {
     }
 
     if (data && data.user) {
+      AppState.isGuest = false;
+      localStorage.removeItem('nw_guest_session');
       currentUser = data.user;
       await processUserSession(data.user);
     } else {
@@ -261,6 +264,8 @@ async function handleSignup(event) {
       throw new Error('Signup failed: user record could not be established.');
     }
 
+    AppState.isGuest = false;
+    localStorage.removeItem('nw_guest_session');
     currentUser = user;
 
     // 2. Insert initial row in profiles table
@@ -317,6 +322,8 @@ async function handleSignup(event) {
  */
 async function handleGoogleSignIn() {
   clearAuthAlert();
+  AppState.isGuest = false;
+  localStorage.removeItem('nw_guest_session');
   try {
     if (!window.sb) {
       throw new Error('Supabase client not ready.');
@@ -367,6 +374,8 @@ async function handleForgotPassword(event) {
  * Process authenticated user session, load profile and decide routing
  */
 async function processUserSession(user) {
+  AppState.isGuest = false;
+  localStorage.removeItem('nw_guest_session');
   currentUser = user;
   let profile = null;
 
@@ -488,6 +497,44 @@ async function handleOnboardingSubmit(event) {
   const selectedBoard = getSelectedChipValue('board-chips') || 'CBSE';
   const selectedMedium = getSelectedChipValue('medium-chips') || 'English';
 
+  // ==========================================================================
+  // GUEST ONBOARDING FLOW (Rules 2, 3, 4: Never written to Supabase)
+  // ==========================================================================
+  if (AppState && AppState.isGuest) {
+    const guestProfile = {
+      id: 'guest_student',
+      name: name || 'Guest Student',
+      email: '',
+      class: selectedClass,
+      stream: selectedStream || null,
+      board: selectedBoard,
+      medium: selectedMedium,
+      language: selectedMedium,
+      onboarded: true,
+      is_admin: false
+    };
+
+    AppState.user = guestProfile;
+    currentProfile = guestProfile;
+    localStorage.setItem('nw_guest_profile', JSON.stringify(guestProfile));
+    localStorage.setItem('nw_guest_session', 'true');
+
+    // Render profile and reload curriculum (No Supabase writes)
+    renderAppProfileData(guestProfile);
+    if (typeof reloadStudyForClass === 'function') {
+      reloadStudyForClass();
+    }
+    showScreen('main-app');
+    switchNavTab('home');
+    showToast(`Setup complete! Welcome Guest (${selectedClass}).`, 'success');
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+    return;
+  }
+
   const updatedProfile = {
     id: currentUser ? currentUser.id : (AppState.user?.id || 'local_student'),
     name: name || 'Student',
@@ -537,9 +584,123 @@ async function handleOnboardingSubmit(event) {
 }
 
 /**
+ * Track Anonymous Guest Account in Supabase (Rule 5)
+ * Increments anonymous guest counter via RPC once per device.
+ * Stores nw_guest_counted=1 in localStorage so it does not increment every launch.
+ * Guest personal/progress data is NEVER written to Supabase.
+ */
+async function trackGuestAccountCount() {
+  const isAlreadyCounted = localStorage.getItem('nw_guest_counted') === '1' || localStorage.getItem('guest_counted') === '1';
+  if (isAlreadyCounted) return;
+
+  try {
+    if (window.sb && typeof window.sb.rpc === 'function') {
+      const { error } = await window.sb.rpc('increment_guest_count');
+      if (!error) {
+        localStorage.setItem('nw_guest_counted', '1');
+        localStorage.setItem('guest_counted', '1');
+      } else {
+        console.warn('Anonymous guest count RPC note:', error.message);
+      }
+    }
+  } catch (err) {
+    console.warn('Guest counter exception:', err);
+  }
+}
+
+/**
+ * Handle Guest Login Flow (Rules 1, 2, 3, 4)
+ * Allows students to browse Notes Wallah without account creation.
+ * Progress is kept strictly in localStorage with nw_guest_ prefix.
+ */
+async function handleGuestLogin() {
+  clearAuthAlert();
+  AppState.isGuest = true;
+  currentUser = null;
+
+  // Track anonymous guest counter once per device (Rule 5)
+  trackGuestAccountCount();
+
+  // Mark active session as guest
+  localStorage.setItem('nw_guest_session', 'true');
+
+  // Check if guest profile already exists locally
+  const savedGuestProfileRaw = localStorage.getItem('nw_guest_profile');
+  let guestProfile = null;
+  if (savedGuestProfileRaw) {
+    try {
+      guestProfile = JSON.parse(savedGuestProfileRaw);
+    } catch (e) {
+      guestProfile = null;
+    }
+  }
+
+  if (guestProfile && guestProfile.onboarded) {
+    // Guest already configured class/board/stream previously
+    const activeGuest = {
+      id: 'guest_student',
+      name: guestProfile.name || 'Guest Student',
+      email: '',
+      class: guestProfile.class || 'Class 10',
+      stream: guestProfile.stream || '',
+      board: guestProfile.board || 'CBSE',
+      medium: guestProfile.medium || 'English',
+      language: guestProfile.language || 'English',
+      onboarded: true,
+      is_admin: false
+    };
+    AppState.user = activeGuest;
+    currentProfile = activeGuest;
+    renderAppProfileData(activeGuest);
+    if (typeof reloadStudyForClass === 'function') {
+      reloadStudyForClass();
+    }
+    showScreen('main-app');
+    switchNavTab('home');
+    showToast('Browsing as Guest. Your progress is saved locally.', 'info');
+  } else {
+    // New guest -> go to onboarding to pick class & syllabus
+    const newGuest = {
+      id: 'guest_student',
+      name: 'Guest Student',
+      email: '',
+      class: guestProfile?.class || 'Class 10',
+      stream: guestProfile?.stream || '',
+      board: guestProfile?.board || 'CBSE',
+      medium: guestProfile?.medium || 'English',
+      language: guestProfile?.language || 'English',
+      onboarded: false,
+      is_admin: false
+    };
+    AppState.user = newGuest;
+    currentProfile = newGuest;
+    prefillOnboarding('Guest Student');
+    showScreen('onboarding-screen');
+    showToast('Welcome Guest! Select your Class and Syllabus.', 'info');
+  }
+}
+
+/**
+ * Open Login screen from Guest mode to sync progress
+ */
+function openLoginFromGuest() {
+  localStorage.removeItem('nw_guest_session');
+  if (window.AppState) {
+    window.AppState.isGuest = false;
+  }
+  clearAuthAlert();
+  switchAuthTab('login');
+  setAuthAlert('Login or create an account to save and sync your study notes across devices.', 'info');
+  showScreen('auth-screen');
+}
+
+/**
  * Quick Demo Login (Allows immediate preview without manual credentials)
  */
 function handleDemoLogin() {
+  AppState.isGuest = false;
+  localStorage.removeItem('nw_guest_session');
+
   const demoUser = {
     id: 'demo-student-id-101',
     email: 'aamir.demo@noteswallah.in',
@@ -575,20 +736,40 @@ function handleDemoLogin() {
 }
 
 /**
- * Handle Logout
+ * Handle Logout / Exit Guest
  */
 async function handleLogout() {
+  const wasGuest = AppState && AppState.isGuest;
+
   try {
-    if (window.sb) {
+    if (window.sb && !wasGuest) {
       await window.sb.auth.signOut();
     }
   } catch (err) {
     console.warn('SignOut exception:', err);
   }
 
+  // Clear guest active session (preserves nw_guest_profile class prefs if user comes back)
+  localStorage.removeItem('nw_guest_session');
+  localStorage.removeItem('nw_local_profile');
+
   currentUser = null;
   currentProfile = null;
-  localStorage.removeItem('nw_local_profile');
+  if (window.AppState) {
+    window.AppState.isGuest = false;
+    window.AppState.user = {
+      id: null,
+      name: 'Student',
+      email: '',
+      class: 'Class 10',
+      stream: '',
+      board: 'CBSE',
+      medium: 'English',
+      language: 'English',
+      onboarded: false,
+      is_admin: false
+    };
+  }
 
   // Reset inputs
   const loginForm = document.getElementById('login-form');
@@ -599,5 +780,5 @@ async function handleLogout() {
   clearAuthAlert();
   switchAuthTab('login');
   showScreen('auth-screen');
-  showToast('Logged out successfully.', 'info');
+  showToast(wasGuest ? 'Exited Guest Mode' : 'Logged out successfully.', 'info');
 }
