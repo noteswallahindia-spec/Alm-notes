@@ -60,8 +60,13 @@ function switchNavTab(tabName) {
     }
   }
 
-  if (tabName === 'test' && typeof initTestModule === 'function') {
-    initTestModule();
+  if (tabName === 'test') {
+    if (typeof reloadTestForClass === 'function') {
+      reloadTestForClass();
+    }
+    if (typeof initTestModule === 'function') {
+      initTestModule();
+    }
   }
 
   if (tabName === 'shop' && typeof loadShopPage === 'function') {

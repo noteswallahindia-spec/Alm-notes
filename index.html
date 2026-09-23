@@ -523,25 +523,24 @@
                   </div>
                 </div>
 
-                <!-- 1. Class Selection -->
-                <div class="flow-group">
-                  <label class="flow-label"><i class="fa-solid fa-graduation-cap"></i> Select Class</label>
-                  <div class="flow-chips-row" id="test-class-chips">
-                    <button type="button" class="flow-chip" data-class="Class 9" onclick="selectTestClass('Class 9')">Class 9</button>
-                    <button type="button" class="flow-chip active" data-class="Class 10" onclick="selectTestClass('Class 10')">Class 10</button>
-                    <button type="button" class="flow-chip" data-class="Class 11" onclick="selectTestClass('Class 11')">Class 11</button>
-                    <button type="button" class="flow-chip" data-class="Class 12" onclick="selectTestClass('Class 12')">Class 12</button>
+                <!-- 1. Active Student Academic Class (Locked to Login Profile - No manual picker in test zone) -->
+                <div class="flow-locked-class-banner">
+                  <div class="locked-class-left">
+                    <div class="locked-class-avatar">
+                      <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div class="locked-class-meta">
+                      <div class="locked-class-title-row">
+                        <span class="locked-class-badge" id="test-locked-class-badge">Class 10</span>
+                        <span class="locked-class-board" id="test-locked-board-badge">CBSE</span>
+                      </div>
+                      <span class="locked-class-subtitle" id="test-locked-class-subtitle">All mock tests and chapters aligned with your active profile</span>
+                    </div>
                   </div>
-                </div>
-
-                <!-- Stream Selection (Visible for Class 11/12) -->
-                <div class="flow-group hidden" id="test-stream-group">
-                  <label class="flow-label"><i class="fa-solid fa-compass"></i> Select Stream</label>
-                  <div class="flow-chips-row" id="test-stream-chips">
-                    <button type="button" class="flow-chip active" data-stream="Science" onclick="selectTestStream('Science')">Science</button>
-                    <button type="button" class="flow-chip" data-stream="Commerce" onclick="selectTestStream('Commerce')">Commerce</button>
-                    <button type="button" class="flow-chip" data-stream="Arts" onclick="selectTestStream('Arts')">Arts</button>
-                  </div>
+                  <button type="button" class="btn-change-academic" onclick="openAcademicSettingsModal()" title="Change class in profile">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Change</span>
+                  </button>
                 </div>
 
                 <!-- 2. Subject Selection -->
@@ -1995,9 +1994,14 @@
               <h3 id="admin-questions-test-title" style="font-size:15px; font-weight:800; margin:0; line-height:1.2;">Test Questions</h3>
               <span id="admin-questions-count-badge" class="admin-item-pill blue">0 Questions</span>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openAddQuestionForm()">
-              <i class="fa-solid fa-plus"></i> Add Question
-            </button>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-success btn-sm" onclick="openBulkQuestionsForm()" title="Add multiple questions at once">
+                <i class="fa-solid fa-file-import"></i> Bulk Import
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="openAddQuestionForm()" title="Add single question">
+                <i class="fa-solid fa-plus"></i> Single
+              </button>
+            </div>
           </div>
 
           <div id="admin-questions-list">
@@ -2070,6 +2074,82 @@
               </button>
             </div>
           </form>
+        </div>
+
+        <!-- 8) BULK ADD QUESTIONS VIEW (एक साथ ढेर सारे प्रश्न जोड़ें) -->
+        <div id="admin-view-bulk-questions" class="admin-view">
+          <div class="admin-toolbar-row">
+            <button type="button" class="btn btn-secondary-outline btn-sm" onclick="showAdminSubView('admin-view-questions')">
+              <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <div style="flex:1; margin-left:8px;">
+              <h3 style="font-size:15px; font-weight:800; margin:0; line-height:1.2;">Bulk Question Importer</h3>
+              <span id="admin-bulk-test-title" class="admin-item-pill blue">Mock Test</span>
+            </div>
+          </div>
+
+          <div class="bulk-help-banner">
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--primary-blue); font-size:16px; margin-top:2px;"></i>
+              <div>
+                <strong>एक साथ ढेर सारे प्रश्न जोड़ें (Paste multiple MCQs at once)</strong>
+                <p style="margin:4px 0 0; font-size:12px; color:var(--text-secondary); line-height:1.4;">
+                  ChatGPT, Gemini, NCERT, या Word से सीधे कॉपी करके यहाँ पेस्ट करें। सिस्टम अपने आप Question, 4 Options और Correct Answer पहचान लेगा।
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bulk-actions-toolbar">
+            <button type="button" class="btn btn-secondary-outline btn-xs" onclick="loadBulkSampleTemplate()">
+              <i class="fa-solid fa-lightbulb"></i> Load Sample Questions
+            </button>
+            <button type="button" class="btn btn-secondary-outline btn-xs" onclick="copyAIPromptTemplate()">
+              <i class="fa-solid fa-copy"></i> Copy AI Prompt
+            </button>
+            <button type="button" class="btn btn-secondary-outline btn-xs" onclick="clearBulkInput()">
+              <i class="fa-solid fa-eraser"></i> Clear Box
+            </button>
+          </div>
+
+          <div class="card form-section-card" style="margin-bottom:12px; padding:12px;">
+            <textarea 
+              id="admin-bulk-questions-input" 
+              class="bulk-textarea" 
+              rows="10" 
+              placeholder="Paste multiple questions here in simple format:
+
+Q1: What is the unit of electric current?
+A) Volt
+B) Ampere
+C) Ohm
+D) Watt
+Ans: B
+
+Q2: Which gas is used in photosynthesis?
+A) Nitrogen
+B) Oxygen
+C) Carbon Dioxide
+D) Hydrogen
+Ans: C"
+              oninput="handleBulkInputDebounced()"
+            ></textarea>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <button type="button" class="btn btn-secondary-outline btn-block" onclick="parseBulkQuestionsInput()" style="flex:1;">
+              <i class="fa-solid fa-magnifying-glass"></i> Parse & Preview
+            </button>
+            <button type="button" id="btn-save-bulk-questions" class="btn btn-primary btn-block" onclick="handleSaveBulkQuestions()" style="flex:1;" disabled>
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span id="bulk-save-btn-text">Import Questions (0)</span>
+            </button>
+          </div>
+
+          <!-- Parsed Preview -->
+          <div id="admin-bulk-preview-container">
+            <!-- Injected by js/admin.js -->
+          </div>
         </div>
 
       </div>

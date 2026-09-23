@@ -436,6 +436,9 @@ async function processUserSession(user) {
     if (typeof reloadStudyForClass === 'function') {
       reloadStudyForClass();
     }
+    if (typeof reloadTestForClass === 'function') {
+      reloadTestForClass();
+    }
     showScreen('main-app');
     switchNavTab('home');
   } else {
@@ -524,6 +527,9 @@ async function handleOnboardingSubmit(event) {
     if (typeof reloadStudyForClass === 'function') {
       reloadStudyForClass();
     }
+    if (typeof reloadTestForClass === 'function') {
+      reloadTestForClass();
+    }
     showScreen('main-app');
     switchNavTab('home');
     showToast(`Setup complete! Welcome Guest (${selectedClass}).`, 'success');
@@ -572,6 +578,9 @@ async function handleOnboardingSubmit(event) {
   renderAppProfileData(updatedProfile);
   if (typeof reloadStudyForClass === 'function') {
     reloadStudyForClass();
+  }
+  if (typeof reloadTestForClass === 'function') {
+    reloadTestForClass();
   }
   showScreen('main-app');
   switchNavTab('home');
@@ -655,6 +664,9 @@ async function handleGuestLogin() {
     if (typeof reloadStudyForClass === 'function') {
       reloadStudyForClass();
     }
+    if (typeof reloadTestForClass === 'function') {
+      reloadTestForClass();
+    }
     showScreen('main-app');
     switchNavTab('home');
     showToast('Browsing as Guest. Your progress is saved locally.', 'info');
@@ -729,6 +741,9 @@ function handleDemoLogin() {
   renderAppProfileData(demoProfile);
   if (typeof reloadStudyForClass === 'function') {
     reloadStudyForClass();
+  }
+  if (typeof reloadTestForClass === 'function') {
+    reloadTestForClass();
   }
   showScreen('main-app');
   switchNavTab('home');

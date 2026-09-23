@@ -1223,3 +1223,466 @@ function escapeAdminHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+/* ==========================================================================
+   BULK QUESTION IMPORTER LOGIC
+   ========================================================================== */
+
+let parsedBulkQuestions = [];
+let bulkDebounceTimer = null;
+
+/**
+ * Open Bulk Questions Import Form
+ */
+function openBulkQuestionsForm() {
+  if (!checkIsUserAdmin()) {
+    alert('Access restricted to administrators.');
+    return;
+  }
+  if (!currentManagingTest || !currentManagingTest.id) {
+    alert('Please select a mock test first.');
+    return;
+  }
+
+  const titleEl = document.getElementById('admin-bulk-test-title');
+  if (titleEl) {
+    titleEl.textContent = `${currentManagingTest.title} (${currentManagingTest.class || ''})`;
+  }
+
+  parsedBulkQuestions = [];
+  const previewContainer = document.getElementById('admin-bulk-preview-container');
+  if (previewContainer) previewContainer.innerHTML = '';
+
+  const saveBtn = document.getElementById('btn-save-bulk-questions');
+  if (saveBtn) saveBtn.disabled = true;
+  const saveBtnText = document.getElementById('bulk-save-btn-text');
+  if (saveBtnText) saveBtnText.textContent = 'Import Questions (0)';
+
+  showAdminSubView('admin-view-bulk-questions');
+}
+
+/**
+ * Debounced auto-parse as user types/pastes
+ */
+function handleBulkInputDebounced() {
+  clearTimeout(bulkDebounceTimer);
+  bulkDebounceTimer = setTimeout(() => {
+    parseBulkQuestionsInput(false);
+  }, 600);
+}
+
+/**
+ * Clear the input textarea
+ */
+function clearBulkInput() {
+  const inputEl = document.getElementById('admin-bulk-questions-input');
+  if (inputEl) inputEl.value = '';
+  parsedBulkQuestions = [];
+  renderBulkQuestionsPreview();
+}
+
+/**
+ * Load realistic sample template for demonstration
+ */
+function loadBulkSampleTemplate() {
+  const sample = `Q1: What is the SI unit of electric potential difference?
+A) Ampere
+B) Volt
+C) Ohm
+D) Joule
+Ans: B
+
+Q2: Which acid is naturally present in curd/yogurt?
+A) Citric acid
+B) Acetic acid
+C) Lactic acid
+D) Tartaric acid
+Ans: C
+
+Q3: Which part of the human brain controls involuntary actions like breathing and heartbeat?
+A) Cerebrum
+B) Cerebellum
+C) Medulla Oblongata
+D) Hypothalamus
+Ans: C
+
+Q4: If the focal length of a spherical mirror is 20 cm, its radius of curvature will be:
+A) 10 cm
+B) 20 cm
+C) 40 cm
+D) 80 cm
+Ans: C
+
+Q5: In which year did the French Revolution begin?
+A) 1789
+B) 1799
+C) 1776
+D) 1804
+Ans: A`;
+
+  const inputEl = document.getElementById('admin-bulk-questions-input');
+  if (inputEl) {
+    inputEl.value = sample;
+    parseBulkQuestionsInput(true);
+  }
+}
+
+/**
+ * Copy AI prompt ready to paste into ChatGPT or Gemini
+ */
+function copyAIPromptTemplate() {
+  const subjectName = currentManagingTest ? currentManagingTest.subject_name || currentManagingTest.title : 'Science';
+  const prompt = `Act as an expert high school teacher for CBSE NCERT. 
+Generate 20 multiple choice questions (MCQs) for "${subjectName}" in this EXACT format without bold markdown or conversational text:
+
+Q1: [Question text]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+Ans: [A, B, C, or D]
+
+Q2: [Question text]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+Ans: [A, B, C, or D]`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(prompt)
+      .then(() => {
+        if (typeof showToast === 'function') {
+          showToast('AI Prompt copied! Paste in ChatGPT or Gemini.', 'success');
+        } else {
+          alert('AI Prompt copied to clipboard!');
+        }
+      })
+      .catch(() => alert(prompt));
+  } else {
+    alert(prompt);
+  }
+}
+
+/**
+ * Parse bulk text input into structured questions array
+ */
+function parseBulkQuestionsInput(showAlertOnEmpty = true) {
+  const inputEl = document.getElementById('admin-bulk-questions-input');
+  if (!inputEl) return;
+  const rawText = inputEl.value.trim();
+
+  if (!rawText) {
+    parsedBulkQuestions = [];
+    renderBulkQuestionsPreview();
+    if (showAlertOnEmpty && typeof showToast === 'function') {
+      showToast('Please paste some questions first.', 'warning');
+    }
+    return;
+  }
+
+  const results = [];
+
+  // Check if rawText is JSON
+  if (rawText.startsWith('[') && rawText.endsWith(']')) {
+    try {
+      const jsonArr = JSON.parse(rawText);
+      if (Array.isArray(jsonArr)) {
+        jsonArr.forEach((item, idx) => {
+          const qText = item.question || item.question_text || item.text || '';
+          const optA = item.option_a || item.a || item.options?.[0] || '';
+          const optB = item.option_b || item.b || item.options?.[1] || '';
+          const optC = item.option_c || item.c || item.options?.[2] || '';
+          const optD = item.option_d || item.d || item.options?.[3] || '';
+          let correct = (item.correct_option || item.correct || item.ans || item.answer || 'A').toUpperCase().trim();
+          if (correct === '1') correct = 'A';
+          if (correct === '2') correct = 'B';
+          if (correct === '3') correct = 'C';
+          if (correct === '4') correct = 'D';
+
+          if (qText && optA && optB) {
+            results.push({
+              index: idx + 1,
+              question_text: qText,
+              option_a: optA,
+              option_b: optB,
+              option_c: optC || 'None of the above',
+              option_d: optD || 'All of the above',
+              correct_option: ['A','B','C','D'].includes(correct) ? correct : 'A',
+              valid: true
+            });
+          }
+        });
+        if (results.length > 0) {
+          parsedBulkQuestions = results;
+          renderBulkQuestionsPreview();
+          return;
+        }
+      }
+    } catch (e) {
+      // not valid JSON, proceed with text parsing
+    }
+  }
+
+  // Text-based parsing
+  // Split into chunks by question number indicators or double newlines
+  const lines = rawText.split('\n');
+  let currentChunk = [];
+  const chunks = [];
+
+  const isQuestionStart = (line) => {
+    const l = line.trim();
+    return /^(?:q(?:uestion)?\s*\d+[\.\:\)\-]?|\d+[\.\)\-]\s+)/i.test(l) && !/^[A-D][\.\)\-]/i.test(l);
+  };
+
+  lines.forEach(line => {
+    if (isQuestionStart(line) && currentChunk.length > 0) {
+      chunks.push(currentChunk.join('\n'));
+      currentChunk = [line];
+    } else {
+      currentChunk.push(line);
+    }
+  });
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join('\n'));
+  }
+
+  // If couldn't split by question starts, try splitting by blank lines
+  const finalChunks = (chunks.length > 1) ? chunks : rawText.split(/\n\s*\n+/);
+
+  finalChunks.forEach((chunk, idx) => {
+    const trimmedChunk = chunk.trim();
+    if (!trimmedChunk) return;
+
+    // Check for pipe-separated format: Question | Option A | Option B | Option C | Option D | Answer
+    if (trimmedChunk.includes('|')) {
+      const parts = trimmedChunk.split('|').map(s => s.trim());
+      if (parts.length >= 6) {
+        let correct = (parts[5] || 'A').toUpperCase().trim();
+        if (correct.length > 1) correct = correct.charAt(0);
+        results.push({
+          index: idx + 1,
+          question_text: parts[0].replace(/^(?:Q\d+[:.]?|\d+[:.]?)\s*/i, ''),
+          option_a: parts[1],
+          option_b: parts[2],
+          option_c: parts[3],
+          option_d: parts[4],
+          correct_option: ['A', 'B', 'C', 'D'].includes(correct) ? correct : 'A',
+          valid: true
+        });
+        return;
+      }
+    }
+
+    // Standard block format
+    const chunkLines = trimmedChunk.split('\n').map(l => l.trim()).filter(Boolean);
+    let qLines = [];
+    let optA = '', optB = '', optC = '', optD = '';
+    let correct = 'A';
+
+    chunkLines.forEach(line => {
+      // Check for Option A
+      if (/^(?:\(?A\)?[\.\:\)\-]|A[\.\:\)\-])\s*(.+)/i.test(line)) {
+        optA = line.replace(/^(?:\(?A\)?[\.\:\)\-]|A[\.\:\)\-])\s*/i, '').trim();
+      }
+      // Check for Option B
+      else if (/^(?:\(?B\)?[\.\:\)\-]|B[\.\:\)\-])\s*(.+)/i.test(line)) {
+        optB = line.replace(/^(?:\(?B\)?[\.\:\)\-]|B[\.\:\)\-])\s*/i, '').trim();
+      }
+      // Check for Option C
+      else if (/^(?:\(?C\)?[\.\:\)\-]|C[\.\:\)\-])\s*(.+)/i.test(line)) {
+        optC = line.replace(/^(?:\(?C\)?[\.\:\)\-]|C[\.\:\)\-])\s*/i, '').trim();
+      }
+      // Check for Option D
+      else if (/^(?:\(?D\)?[\.\:\)\-]|D[\.\:\)\-])\s*(.+)/i.test(line)) {
+        optD = line.replace(/^(?:\(?D\)?[\.\:\)\-]|D[\.\:\)\-])\s*/i, '').trim();
+      }
+      // Check for Answer line
+      else if (/^(?:ans(?:wer)?|correct(?:\s*option)?|right(?:\s*ans)?)\s*[:=.\-]?\s*([A-D1-4])/i.test(line)) {
+        const match = line.match(/^(?:ans(?:wer)?|correct(?:\s*option)?|right(?:\s*ans)?)\s*[:=.\-]?\s*([A-D1-4])/i);
+        if (match && match[1]) {
+          let ansChar = match[1].toUpperCase();
+          if (ansChar === '1') ansChar = 'A';
+          else if (ansChar === '2') ansChar = 'B';
+          else if (ansChar === '3') ansChar = 'C';
+          else if (ansChar === '4') ansChar = 'D';
+          correct = ansChar;
+        }
+      }
+      // Otherwise it's part of the question text if we haven't hit options yet
+      else if (!optA && !optB) {
+        qLines.push(line);
+      }
+    });
+
+    let qText = qLines.join(' ').replace(/^(?:Q(?:uestion)?\s*\d+[\.\:\)\-]?|\d+[\.\)\-])\s*/i, '').trim();
+
+    const isValid = Boolean(qText && optA && optB);
+
+    if (qText) {
+      results.push({
+        index: results.length + 1,
+        question_text: qText,
+        option_a: optA || 'Option A',
+        option_b: optB || 'Option B',
+        option_c: optC || 'Option C',
+        option_d: optD || 'Option D',
+        correct_option: ['A', 'B', 'C', 'D'].includes(correct) ? correct : 'A',
+        valid: isValid
+      });
+    }
+  });
+
+  parsedBulkQuestions = results;
+  renderBulkQuestionsPreview();
+
+  if (results.length > 0 && typeof showToast === 'function') {
+    showToast(`Found ${results.length} questions ready to preview!`, 'success');
+  }
+}
+
+/**
+ * Render preview of parsed questions
+ */
+function renderBulkQuestionsPreview() {
+  const container = document.getElementById('admin-bulk-preview-container');
+  const saveBtn = document.getElementById('btn-save-bulk-questions');
+  const saveBtnText = document.getElementById('bulk-save-btn-text');
+
+  if (!container) return;
+
+  if (parsedBulkQuestions.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:24px 16px; color:var(--text-tertiary); background:var(--bg-card-subtle); border-radius:12px; border:1px dashed var(--border-color);">
+        <i class="fa-solid fa-list-check" style="font-size:28px; margin-bottom:8px; opacity:0.5;"></i>
+        <p style="margin:0; font-size:13px; font-weight:600;">No questions parsed yet</p>
+        <p style="margin:4px 0 0; font-size:11.5px;">Click "Load Sample Questions" or paste text above and click Parse</p>
+      </div>
+    `;
+    if (saveBtn) saveBtn.disabled = true;
+    if (saveBtnText) saveBtnText.textContent = 'Import Questions (0)';
+    return;
+  }
+
+  const validCount = parsedBulkQuestions.filter(q => q.valid).length;
+  if (saveBtn) saveBtn.disabled = validCount === 0;
+  if (saveBtnText) saveBtnText.textContent = `Import ${validCount} Questions`;
+
+  const html = `
+    <div class="bulk-preview-summary">
+      <span style="color:var(--status-success-text);"><i class="fa-solid fa-circle-check"></i> ${validCount} Valid Questions Ready</span>
+      <span style="font-size:11.5px; color:var(--text-secondary);">${parsedBulkQuestions.length} Total Parsed</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height:420px; overflow-y:auto; padding-right:4px;">
+      ${parsedBulkQuestions.map(q => `
+        <div class="card" style="padding:12px; border:1px solid ${q.valid ? 'var(--border-color)' : '#EF4444'}; border-radius:10px;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+            <div style="font-weight:700; font-size:13px; color:var(--text-main); line-height:1.35;">
+              <span style="color:var(--primary-blue); font-weight:800; margin-right:4px;">Q${q.index}.</span>
+              ${escapeAdminHtml(q.question_text)}
+            </div>
+            <span class="admin-item-pill ${q.valid ? 'green' : 'red'}" style="font-size:10px; flex-shrink:0;">
+              ${q.valid ? `Ans: ${q.correct_option}` : 'Incomplete'}
+            </span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; font-size:12px;">
+            <div style="padding:4px 8px; border-radius:6px; background:${q.correct_option === 'A' ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-card-subtle)'}; border:${q.correct_option === 'A' ? '1px solid #10B981' : '1px solid var(--border-subtle)'};">
+              <strong>A)</strong> ${escapeAdminHtml(q.option_a)} ${q.correct_option === 'A' ? '✓' : ''}
+            </div>
+            <div style="padding:4px 8px; border-radius:6px; background:${q.correct_option === 'B' ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-card-subtle)'}; border:${q.correct_option === 'B' ? '1px solid #10B981' : '1px solid var(--border-subtle)'};">
+              <strong>B)</strong> ${escapeAdminHtml(q.option_b)} ${q.correct_option === 'B' ? '✓' : ''}
+            </div>
+            <div style="padding:4px 8px; border-radius:6px; background:${q.correct_option === 'C' ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-card-subtle)'}; border:${q.correct_option === 'C' ? '1px solid #10B981' : '1px solid var(--border-subtle)'};">
+              <strong>C)</strong> ${escapeAdminHtml(q.option_c)} ${q.correct_option === 'C' ? '✓' : ''}
+            </div>
+            <div style="padding:4px 8px; border-radius:6px; background:${q.correct_option === 'D' ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-card-subtle)'}; border:${q.correct_option === 'D' ? '1px solid #10B981' : '1px solid var(--border-subtle)'};">
+              <strong>D)</strong> ${escapeAdminHtml(q.option_d)} ${q.correct_option === 'D' ? '✓' : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * Save all valid parsed questions into Supabase / local bank in bulk
+ */
+async function handleSaveBulkQuestions() {
+  if (!currentManagingTest || !currentManagingTest.id) {
+    alert('No test selected to import questions into.');
+    return;
+  }
+
+  const validQuestions = parsedBulkQuestions.filter(q => q.valid);
+  if (validQuestions.length === 0) {
+    alert('No valid questions to import.');
+    return;
+  }
+
+  const saveBtn = document.getElementById('btn-save-bulk-questions');
+  const originalHtml = saveBtn ? saveBtn.innerHTML : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importing...';
+  }
+
+  try {
+    const startOrder = (currentTestQuestions ? currentTestQuestions.length : 0) + 1;
+    const records = validQuestions.map((q, idx) => ({
+      test_id: currentManagingTest.id,
+      question_text: q.question_text,
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c || '',
+      option_d: q.option_d || '',
+      correct_option: q.correct_option,
+      sort_order: startOrder + idx
+    }));
+
+    if (window.sb) {
+      // Chunk insertions to prevent request payload size overflow
+      const chunkSize = 50;
+      for (let i = 0; i < records.length; i += chunkSize) {
+        const slice = records.slice(i, i + chunkSize);
+        const { error } = await window.sb.from('questions').insert(slice);
+        if (error) {
+          console.warn('Supabase bulk insert notice:', error);
+          throw error;
+        }
+      }
+    } else {
+      // Fallback local simulation
+      records.forEach((r, idx) => {
+        currentTestQuestions.push({
+          ...r,
+          id: 'local_q_' + Date.now() + '_' + idx
+        });
+      });
+    }
+
+    if (typeof showToast === 'function') {
+      showToast(`Success! Imported ${records.length} questions.`, 'success');
+    }
+
+    // Clear input & return to questions list
+    const inputEl = document.getElementById('admin-bulk-questions-input');
+    if (inputEl) inputEl.value = '';
+    parsedBulkQuestions = [];
+
+    showAdminSubView('admin-view-questions');
+    await loadTestQuestions(currentManagingTest.id);
+
+  } catch (err) {
+    console.error('Bulk save error:', err);
+    alert('Error saving questions: ' + err.message);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalHtml;
+    }
+  }
+}
+

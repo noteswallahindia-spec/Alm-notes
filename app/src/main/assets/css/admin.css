@@ -519,3 +519,58 @@
   font-size: 22px;
   margin: 0 auto 12px auto;
 }
+
+/* ==========================================================================
+   BULK QUESTION IMPORTER STYLES
+   ========================================================================== */
+.bulk-help-banner {
+  background: rgba(43, 109, 239, 0.08);
+  border: 1px solid rgba(43, 109, 239, 0.2);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+.bulk-actions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bulk-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  width: 100%;
+  min-height: 200px;
+  border-radius: var(--radius-md, 10px);
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  color: var(--text-main);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.bulk-textarea:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(43, 109, 239, 0.15);
+}
+
+.bulk-preview-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-card-subtle);
+  border-radius: var(--radius-md, 10px);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--border-subtle);
+}
+

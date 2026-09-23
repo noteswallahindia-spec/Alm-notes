@@ -720,117 +720,119 @@ let selectedTestChapterIds = [];
 let selectedTestDuration = 15;
 
 /**
+ * Helper to normalize class string safely
+ */
+function normalizeStudentClass(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.includes('9')) return 'Class 9';
+  if (s.includes('11')) return 'Class 11';
+  if (s.includes('12')) return 'Class 12';
+  return 'Class 10';
+}
+
+/**
+ * Helper to normalize stream string safely
+ */
+function normalizeStudentStream(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.includes('comm')) return 'Commerce';
+  if (s.includes('art') || s.includes('human')) return 'Arts';
+  return 'Science';
+}
+
+/**
  * Initialize or sync the Test Start Flow UI
+ * Strictly locks to the active logged-in profile (Rule: no manual class picker in test zone)
  */
-function initTestStartFlow() {
-  const userClass = (typeof AppState !== 'undefined' && AppState.user && AppState.user.class)
-    ? AppState.user.class
-    : (typeof currentProfile !== 'undefined' && currentProfile?.class ? currentProfile.class : 'Class 10');
-  const userStream = (typeof AppState !== 'undefined' && AppState.user && AppState.user.stream)
-    ? AppState.user.stream
-    : (typeof currentProfile !== 'undefined' && currentProfile?.stream ? currentProfile.stream : 'Science');
+function initTestStartFlow(forceReset = false) {
+  // 1) Read active profile from AppState, currentProfile, or guest profile
+  const user = (typeof AppState !== 'undefined' && AppState.user)
+    ? AppState.user
+    : ((typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile : null);
 
-  if (['Class 9', 'Class 10', 'Class 11', 'Class 12'].includes(userClass)) {
-    selectedTestClass = userClass;
-  }
-  if (userStream) {
-    selectedTestStream = userStream;
-  }
+  let rawClass = user?.class;
+  let rawStream = user?.stream;
+  let rawBoard = user?.board || 'CBSE';
 
-  // Update Class chip selection
-  const classChips = document.querySelectorAll('#test-class-chips .flow-chip');
-  classChips.forEach(chip => {
-    if (chip.getAttribute('data-class') === selectedTestClass) {
-      chip.classList.add('active');
-    } else {
-      chip.classList.remove('active');
+  // Fallback to guest profile in localStorage if needed
+  if (!rawClass) {
+    try {
+      const savedGuest = localStorage.getItem('nw_guest_profile');
+      if (savedGuest) {
+        const parsed = JSON.parse(savedGuest);
+        rawClass = parsed.class;
+        rawStream = parsed.stream;
+        rawBoard = parsed.board || rawBoard;
+      }
+    } catch (e) {
+      // ignore
     }
-  });
+  }
 
-  // Toggle Stream group visibility for Class 11/12
-  const streamGroup = document.getElementById('test-stream-group');
-  if (streamGroup) {
+  const activeClass = normalizeStudentClass(rawClass || 'Class 10');
+  const activeStream = normalizeStudentStream(rawStream || 'Science');
+
+  const classChanged = (activeClass !== selectedTestClass) || 
+                       (activeStream !== selectedTestStream) || 
+                       forceReset;
+
+  selectedTestClass = activeClass;
+  selectedTestStream = activeStream;
+
+  // 2) Update Locked Academic Class Display Banner
+  const lockedBadge = document.getElementById('test-locked-class-badge');
+  const lockedBoard = document.getElementById('test-locked-board-badge');
+  const lockedSub = document.getElementById('test-locked-class-subtitle');
+
+  if (lockedBadge) {
     if (selectedTestClass === 'Class 11' || selectedTestClass === 'Class 12') {
-      streamGroup.classList.remove('hidden');
+      lockedBadge.textContent = `${selectedTestClass} (${selectedTestStream})`;
     } else {
-      streamGroup.classList.add('hidden');
+      lockedBadge.textContent = selectedTestClass;
     }
   }
+  if (lockedBoard) {
+    lockedBoard.textContent = rawBoard || 'CBSE';
+  }
+  if (lockedSub) {
+    lockedSub.textContent = `All mock tests and chapters aligned with your active profile (${selectedTestClass}${selectedTestClass.includes('11') || selectedTestClass.includes('12') ? ' · ' + selectedTestStream : ''})`;
+  }
 
-  // Update Stream chips UI
-  const streamChips = document.querySelectorAll('#test-stream-chips .flow-chip');
-  streamChips.forEach(chip => {
-    if (chip.getAttribute('data-stream') === selectedTestStream) {
-      chip.classList.add('active');
-    } else {
-      chip.classList.remove('active');
-    }
-  });
+  // 3) Reset subject and chapter selection if class/stream changed
+  if (classChanged || !selectedTestSubjectId) {
+    selectedTestSubjectId = null;
+    selectedTestChapterIds = [];
+  }
 
-  // Populate subjects & chapters
+  // 4) Populate subjects & chapters for current logged-in class
   renderTestSubjects();
 }
 
 /**
- * User selects Class in Test Start Flow
+ * Global function to reload Test Zone when student updates class in profile
  */
-function selectTestClass(className) {
-  selectedTestClass = className;
-  const classChips = document.querySelectorAll('#test-class-chips .flow-chip');
-  classChips.forEach(chip => {
-    if (chip.getAttribute('data-class') === className) {
-      chip.classList.add('active');
-    } else {
-      chip.classList.remove('active');
-    }
-  });
-
-  const streamGroup = document.getElementById('test-stream-group');
-  if (streamGroup) {
-    if (className === 'Class 11' || className === 'Class 12') {
-      streamGroup.classList.remove('hidden');
-    } else {
-      streamGroup.classList.add('hidden');
-    }
-  }
-
-  renderTestSubjects();
-}
-
-/**
- * User selects Stream in Test Start Flow (Class 11/12)
- */
-function selectTestStream(streamName) {
-  selectedTestStream = streamName;
-  const streamChips = document.querySelectorAll('#test-stream-chips .flow-chip');
-  streamChips.forEach(chip => {
-    if (chip.getAttribute('data-stream') === streamName) {
-      chip.classList.add('active');
-    } else {
-      chip.classList.remove('active');
-    }
-  });
-
-  renderTestSubjects();
-}
+window.reloadTestForClass = function() {
+  initTestStartFlow(true);
+};
 
 /**
  * Retrieve curriculum subjects for given Class and Stream
  */
 function getSubjectsForClassAndStream(className, streamName) {
-  if (className === 'Class 9' && typeof CLASS_9_SUBJECTS !== 'undefined') {
+  const normClass = normalizeStudentClass(className);
+  const normStream = normalizeStudentStream(streamName);
+
+  if (normClass === 'Class 9' && typeof CLASS_9_SUBJECTS !== 'undefined') {
     return CLASS_9_SUBJECTS;
   }
-  if (className === 'Class 11') {
-    const s = (streamName || '').toLowerCase();
-    if (s.includes('comm') && typeof CLASS_11_COMMERCE_SUBJECTS !== 'undefined') return CLASS_11_COMMERCE_SUBJECTS;
-    if ((s.includes('art') || s.includes('human')) && typeof CLASS_11_ARTS_SUBJECTS !== 'undefined') return CLASS_11_ARTS_SUBJECTS;
+  if (normClass === 'Class 11') {
+    if (normStream === 'Commerce' && typeof CLASS_11_COMMERCE_SUBJECTS !== 'undefined') return CLASS_11_COMMERCE_SUBJECTS;
+    if (normStream === 'Arts' && typeof CLASS_11_ARTS_SUBJECTS !== 'undefined') return CLASS_11_ARTS_SUBJECTS;
     if (typeof CLASS_11_SCIENCE_SUBJECTS !== 'undefined') return CLASS_11_SCIENCE_SUBJECTS;
   }
-  if (className === 'Class 12') {
-    const s = (streamName || '').toLowerCase();
-    if (s.includes('comm') && typeof CLASS_12_COMMERCE_SUBJECTS !== 'undefined') return CLASS_12_COMMERCE_SUBJECTS;
-    if ((s.includes('art') || s.includes('human')) && typeof CLASS_12_ARTS_SUBJECTS !== 'undefined') return CLASS_12_ARTS_SUBJECTS;
+  if (normClass === 'Class 12') {
+    if (normStream === 'Commerce' && typeof CLASS_12_COMMERCE_SUBJECTS !== 'undefined') return CLASS_12_COMMERCE_SUBJECTS;
+    if (normStream === 'Arts' && typeof CLASS_12_ARTS_SUBJECTS !== 'undefined') return CLASS_12_ARTS_SUBJECTS;
     if (typeof CLASS_12_SCIENCE_SUBJECTS !== 'undefined') return CLASS_12_SCIENCE_SUBJECTS;
   }
   if (typeof CLASS_10_SUBJECTS !== 'undefined') {

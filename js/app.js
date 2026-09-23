@@ -517,6 +517,9 @@ async function handleSettingsSave(event) {
     if (typeof reloadStudyForClass === 'function') {
       reloadStudyForClass();
     }
+    if (typeof reloadTestForClass === 'function') {
+      reloadTestForClass();
+    }
     closeAcademicSettingsModal();
     showToast('Academic profile updated locally.', 'success');
 
@@ -585,6 +588,9 @@ async function handleSettingsSave(event) {
 
   if (typeof reloadStudyForClass === 'function') {
     reloadStudyForClass();
+  }
+  if (typeof reloadTestForClass === 'function') {
+    reloadTestForClass();
   }
 
   // Close modal
