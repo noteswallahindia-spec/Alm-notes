@@ -215,6 +215,22 @@ function openChapterDetail(subjectId, chapterId) {
   const chapter = getChapterById(subjectId, chapterId);
   if (!chapter || !subject) return;
 
+  // Track last study progress in localStorage (Rule 4: localStorage only)
+  try {
+    const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
+    const key = isGuest ? 'nw_guest_last_study' : 'noteswallah_last_study';
+    localStorage.setItem(key, JSON.stringify({
+      subjectId: subjectId,
+      subjectName: subject.name,
+      chapterId: chapterId,
+      chapterTitle: chapter.title,
+      chapterNumber: chapter.number,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.warn('Could not record last study:', e);
+  }
+
   // Populate Details
   const breadcrumbEl = document.getElementById('detail-subject-breadcrumb');
   const titleEl = document.getElementById('detail-chapter-title');

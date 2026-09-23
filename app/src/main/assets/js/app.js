@@ -147,7 +147,7 @@ function initAppSession() {
       splash.style.pointerEvents = 'none';
       const authScreen = document.getElementById('auth-screen');
       const mainApp = document.getElementById('main-app');
-      if (currentUser || localStorage.getItem('nw_local_profile')) {
+      if (currentUser || localStorage.getItem('nw_local_profile') || localStorage.getItem('nw_guest_session') === 'true') {
         if (mainApp) mainApp.classList.add('active');
       } else {
         if (authScreen) authScreen.classList.add('active');
@@ -161,6 +161,7 @@ function initAppSession() {
       if (window.sb && window.sb.auth) {
         const { data, error } = await window.sb.auth.getSession();
         if (!error && data?.session?.user) {
+          if (window.AppState) window.AppState.isGuest = false;
           resolveStartup(data.session.user);
           return;
         }
@@ -169,12 +170,46 @@ function initAppSession() {
       console.warn('Notes Wallah: Session check note:', err);
     }
 
+    // Check Guest Session (Rule: Guest session stored locally)
+    const isGuestSession = localStorage.getItem('nw_guest_session') === 'true';
+    if (isGuestSession) {
+      const guestRaw = localStorage.getItem('nw_guest_profile');
+      let guestProfile = null;
+      if (guestRaw) {
+        try { guestProfile = JSON.parse(guestRaw); } catch (e) {}
+      }
+
+      if (window.AppState) {
+        window.AppState.isGuest = true;
+        window.AppState.user = {
+          id: 'guest_student',
+          name: guestProfile?.name || 'Guest Student',
+          email: '',
+          class: guestProfile?.class || 'Class 10',
+          stream: guestProfile?.stream || '',
+          board: guestProfile?.board || 'CBSE',
+          medium: guestProfile?.medium || 'English',
+          language: guestProfile?.language || 'English',
+          onboarded: !!(guestProfile && guestProfile.onboarded),
+          is_admin: false
+        };
+      }
+      currentUser = null;
+      currentProfile = window.AppState ? window.AppState.user : null;
+
+      if (guestProfile && guestProfile.onboarded) {
+        resolveStartup({ id: 'guest_student', isGuest: true });
+        return;
+      }
+    }
+
     // Check local demo profile if present
     const localProfileRaw = localStorage.getItem('nw_local_profile');
     if (localProfileRaw) {
       try {
         const localProfile = JSON.parse(localProfileRaw);
         if (localProfile && localProfile.onboarded) {
+          if (window.AppState) window.AppState.isGuest = false;
           currentUser = { id: localProfile.id, email: localProfile.email };
           currentProfile = localProfile;
           resolveStartup(currentUser);
@@ -197,7 +232,16 @@ function initAppSession() {
 
     setTimeout(async () => {
       try {
-        if (user) {
+        if (user && user.isGuest) {
+          if (window.AppState) window.AppState.isGuest = true;
+          renderAppProfileData(window.AppState ? window.AppState.user : currentProfile);
+          if (typeof reloadStudyForClass === 'function') {
+            reloadStudyForClass();
+          }
+          showScreen('main-app');
+          switchNavTab('home');
+        } else if (user) {
+          if (window.AppState) window.AppState.isGuest = false;
           await processUserSession(user);
         } else {
           showScreen('auth-screen');
@@ -247,8 +291,9 @@ function getInitials(name) {
 function renderAppProfileData(profile) {
   if (!profile) return;
 
-  const firstName = profile.name ? profile.name.split(' ')[0] : 'Student';
-  const initials = getInitials(profile.name);
+  const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
+  const firstName = isGuest ? 'Guest' : (profile.name ? profile.name.split(' ')[0] : 'Student');
+  const initials = isGuest ? 'GS' : getInitials(profile.name);
   const classText = profile.class || 'Class 10';
   const streamText = profile.stream || '';
   const boardText = profile.board || 'CBSE';
@@ -273,7 +318,7 @@ function renderAppProfileData(profile) {
 
   if (greetingPrefix) greetingPrefix.textContent = getTimeGreeting();
   if (greetingName) greetingName.textContent = firstName;
-  if (infoBadge) infoBadge.textContent = academicLine;
+  if (infoBadge) infoBadge.textContent = academicLine + (isGuest ? ' (Guest)' : '');
   if (headerAvatarInitials) headerAvatarInitials.textContent = initials;
 
   // Account Screen Elements
@@ -288,10 +333,19 @@ function renderAppProfileData(profile) {
   const accountMenuSub = document.getElementById('account-menu-academic-sub');
   const shopAdminRow = document.getElementById('shop-admin-row');
   const adminPanelRow = document.getElementById('admin-panel-menu-row');
+  const guestSyncBanner = document.getElementById('guest-sync-banner');
+  const logoutTitle = document.getElementById('account-logout-title');
+  const logoutCaption = document.getElementById('account-logout-caption');
 
   if (accountAvatarInitials) accountAvatarInitials.textContent = initials;
-  if (accountName) accountName.textContent = profile.name || 'Student';
-  if (accountEmail) accountEmail.textContent = profile.email || 'student@noteswallah.in';
+  if (accountName) {
+    if (isGuest) {
+      accountName.innerHTML = `${profile.name || 'Guest Student'} <span class="badge-guest-pill"><i class="fa-solid fa-user-clock"></i> Guest</span>`;
+    } else {
+      accountName.textContent = profile.name || 'Student';
+    }
+  }
+  if (accountEmail) accountEmail.textContent = isGuest ? 'Local Guest Session (Not Synced)' : (profile.email || 'student@noteswallah.in');
   if (accountAcademicLine) accountAcademicLine.textContent = academicLine;
   if (accountClass) accountClass.textContent = classText;
 
@@ -310,10 +364,30 @@ function renderAppProfileData(profile) {
     accountMenuSub.textContent = `${classText}${streamText ? ' (' + streamText + ')' : ''} · Update class, stream, or board`;
   }
 
+  // Guest Sync Banner visibility
+  if (guestSyncBanner) {
+    if (isGuest) {
+      guestSyncBanner.classList.remove('hidden');
+    } else {
+      guestSyncBanner.classList.add('hidden');
+    }
+  }
+
+  // Logout / Exit button customization
+  if (logoutTitle) {
+    logoutTitle.textContent = isGuest ? 'Exit Guest Mode' : 'Logout';
+  }
+  if (logoutCaption) {
+    logoutCaption.textContent = isGuest ? 'Return to login screen' : 'End current student session';
+  }
+
   // Show/Hide Admin menu rows based on is_admin flag or email in ADMIN_EMAILS
-  const isAdmin = (profile.is_admin === true) || 
+  // Guests NEVER have admin access (Rule strict)
+  const isAdmin = !isGuest && (
+    (profile.is_admin === true) || 
     (typeof checkIsUserAdmin === 'function' && checkIsUserAdmin()) ||
-    (typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin());
+    (typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin())
+  );
 
   if (adminPanelRow) {
     if (isAdmin) {
@@ -413,7 +487,44 @@ async function handleSettingsSave(event) {
 
   // Ensure AppState exists
   if (typeof AppState === 'undefined') {
-    window.AppState = { user: {}, get profile() { return this.user; }, set profile(v) { this.user = v; } };
+    window.AppState = { isGuest: false, user: {}, get profile() { return this.user; }, set profile(v) { this.user = v; } };
+  }
+
+  // ==========================================================================
+  // GUEST SETTINGS FLOW (Rules 2, 3, 4: Never written to Supabase)
+  // ==========================================================================
+  if (AppState && AppState.isGuest) {
+    const guestProfile = {
+      ...AppState.user,
+      id: 'guest_student',
+      name: name || 'Guest Student',
+      email: '',
+      class: selectedClass,
+      stream: selectedStream || null,
+      board: selectedBoard,
+      medium: selectedMedium,
+      language: selectedMedium,
+      onboarded: true,
+      is_admin: false
+    };
+
+    AppState.user = guestProfile;
+    currentProfile = guestProfile;
+    localStorage.setItem('nw_guest_profile', JSON.stringify(guestProfile));
+
+    // Render profile and reload curriculum (NO Supabase writes)
+    renderAppProfileData(guestProfile);
+    if (typeof reloadStudyForClass === 'function') {
+      reloadStudyForClass();
+    }
+    closeAcademicSettingsModal();
+    showToast('Academic profile updated locally.', 'success');
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = origHtml;
+    }
+    return;
   }
 
   const currentUserId = (currentUser && currentUser.id) 
