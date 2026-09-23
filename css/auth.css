@@ -393,35 +393,93 @@
 }
 
 /* ==========================================================================
-   GUEST SYSTEM STYLES
+   GUEST SYSTEM STYLES (Adjusted Primary Guest Access Button)
    ========================================================================== */
 .btn-guest {
   background: var(--bg-card);
   color: var(--text-main);
-  border: 1.5px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  margin-top: 10px;
+  border: 1.5px solid rgba(43, 109, 239, 0.28);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-top: 4px;
+  padding: 12px 18px;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: var(--radius-md, 14px);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  width: 100%;
 }
 
 .btn-guest:hover {
-  background: var(--bg-card-subtle);
-  border-color: var(--primary-blue);
-  color: var(--primary-blue);
+  background: linear-gradient(135deg, rgba(43, 109, 239, 0.06) 0%, rgba(99, 102, 241, 0.07) 100%);
+  border-color: var(--primary-blue, #2B6DEF);
+  box-shadow: 0 6px 18px rgba(43, 109, 239, 0.16);
+  transform: translateY(-1px);
 }
 
 .btn-guest:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
+  box-shadow: 0 2px 6px rgba(43, 109, 239, 0.12);
 }
 
-.btn-guest i {
-  font-size: 15px;
-  color: var(--primary-blue);
+.btn-guest-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(43, 109, 239, 0.12);
+  color: var(--primary-blue, #2B6DEF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.btn-guest:hover .btn-guest-icon-box {
+  transform: scale(1.06);
+  background: var(--primary-blue, #2B6DEF);
+  color: #FFFFFF;
+}
+
+.btn-guest-text-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-guest-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-main, #1F2937);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.btn-guest-sub {
+  font-size: 11.5px;
+  color: var(--text-secondary, #6B7280);
+  font-weight: 500;
+  line-height: 1.25;
+  margin-top: 3px;
+}
+
+.btn-guest-arrow {
+  font-size: 13px;
+  color: var(--text-tertiary, #9CA3AF);
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-guest:hover .btn-guest-arrow {
+  color: var(--primary-blue, #2B6DEF);
+  transform: translateX(3px);
 }
 
 /* Guest Sync Banner on Account Screen */
