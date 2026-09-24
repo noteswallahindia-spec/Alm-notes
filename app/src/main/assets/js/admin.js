@@ -877,6 +877,9 @@ function openAddTestForm() {
     handleTestFormClassChange(classSelect.value);
   }
 
+  const chapterInput = document.getElementById('test-form-chapter');
+  if (chapterInput) chapterInput.value = '';
+
   const deleteBtn = document.getElementById('test-form-delete-btn');
   if (deleteBtn) deleteBtn.classList.add('hidden');
 
@@ -903,6 +906,8 @@ function openEditTestForm(testId) {
   }
 
   document.getElementById('test-form-subject').value = item.subject || '';
+  const chapterInput = document.getElementById('test-form-chapter');
+  if (chapterInput) chapterInput.value = item.chapter || '';
   document.getElementById('test-form-title').value = item.title || '';
   document.getElementById('test-form-duration').value = item.duration_min || 15;
   document.getElementById('test-form-active').checked = item.is_active !== false;
@@ -936,6 +941,7 @@ async function handleSaveTest(event) {
   const isSenior = cls.includes('11') || cls.includes('12');
   const stream = isSenior ? document.getElementById('test-form-stream').value : '';
   const subject = document.getElementById('test-form-subject').value.trim();
+  const chapter = document.getElementById('test-form-chapter')?.value?.trim() || '';
   const title = document.getElementById('test-form-title').value.trim();
   const duration = parseInt(document.getElementById('test-form-duration').value, 10) || 15;
   const isActive = document.getElementById('test-form-active').checked;
@@ -954,6 +960,7 @@ async function handleSaveTest(event) {
     class: cls,
     stream: stream,
     subject: subject,
+    chapter: chapter,
     title: title,
     duration_min: duration,
     is_active: isActive
@@ -1255,6 +1262,9 @@ async function handleSaveQuestion(event) {
 
   const record = {
     test_id: currentManagingTest.id,
+    class: currentManagingTest.class || 'Class 10',
+    subject: currentManagingTest.subject || 'General',
+    chapter: currentManagingTest.chapter || currentManagingTest.title || 'Chapter 1',
     question_text: qText,
     option_a: optA,
     option_b: optB,
@@ -1279,6 +1289,20 @@ async function handleSaveQuestion(event) {
         if (error) throw error;
       }
     }
+
+    // Cache locally
+    try {
+      const savedCustomQ = localStorage.getItem('nw_custom_questions');
+      let customQList = savedCustomQ ? JSON.parse(savedCustomQ) : [];
+      if (!Array.isArray(customQList)) customQList = [];
+      const existingIdx = customQList.findIndex(q => q.id === editingQuestionId);
+      if (existingIdx >= 0) {
+        customQList[existingIdx] = { ...record, id: editingQuestionId };
+      } else {
+        customQList.push({ ...record, id: editingQuestionId || ('custom_q_' + Date.now()) });
+      }
+      localStorage.setItem('nw_custom_questions', JSON.stringify(customQList));
+    } catch (e) {}
 
     if (typeof showToast === 'function') {
       showToast('Question saved successfully!', 'success');
@@ -1350,6 +1374,21 @@ function openBulkQuestionsForm() {
   if (!currentManagingTest || !currentManagingTest.id) {
     alert('Please select a mock test first.');
     return;
+  }
+
+  // Pre-fill Class, Subject, and Chapter inputs
+  const classInput = document.getElementById('bulk-form-class');
+  const subjectInput = document.getElementById('bulk-form-subject');
+  const chapterInput = document.getElementById('bulk-form-chapter');
+
+  if (classInput && currentManagingTest.class) {
+    classInput.value = currentManagingTest.class;
+  }
+  if (subjectInput && currentManagingTest.subject) {
+    subjectInput.value = currentManagingTest.subject;
+  }
+  if (chapterInput) {
+    chapterInput.value = currentManagingTest.chapter || currentManagingTest.title || '';
   }
 
   const titleEl = document.getElementById('admin-bulk-test-title');
@@ -1738,9 +1777,21 @@ async function handleSaveBulkQuestions() {
   }
 
   try {
+    const selectedClass = document.getElementById('bulk-form-class')?.value || currentManagingTest.class || 'Class 10';
+    const selectedSubject = document.getElementById('bulk-form-subject')?.value?.trim() || currentManagingTest.subject || 'General';
+    const selectedChapter = document.getElementById('bulk-form-chapter')?.value?.trim() || currentManagingTest.chapter || currentManagingTest.title || 'Chapter 1';
+
+    // Keep currentManagingTest updated with the academic targeting
+    currentManagingTest.class = selectedClass;
+    currentManagingTest.subject = selectedSubject;
+    currentManagingTest.chapter = selectedChapter;
+
     const startOrder = (currentTestQuestions ? currentTestQuestions.length : 0) + 1;
     const records = validQuestions.map((q, idx) => ({
       test_id: currentManagingTest.id,
+      class: selectedClass,
+      subject: selectedSubject,
+      chapter: selectedChapter,
       question_text: q.question_text,
       option_a: q.option_a,
       option_b: q.option_b,
@@ -1771,8 +1822,24 @@ async function handleSaveBulkQuestions() {
       });
     }
 
+    // Cache locally in nw_custom_questions so student tests instantly have access
+    try {
+      const savedCustomQ = localStorage.getItem('nw_custom_questions');
+      let customQList = savedCustomQ ? JSON.parse(savedCustomQ) : [];
+      if (!Array.isArray(customQList)) customQList = [];
+      records.forEach((r, idx) => {
+        customQList.push({
+          ...r,
+          id: r.id || ('custom_q_' + Date.now() + '_' + idx)
+        });
+      });
+      localStorage.setItem('nw_custom_questions', JSON.stringify(customQList));
+    } catch (e) {
+      console.warn('Local cache custom questions note:', e);
+    }
+
     if (typeof showToast === 'function') {
-      showToast(`Success! Imported ${records.length} questions.`, 'success');
+      showToast(`Success! Imported ${records.length} questions for ${selectedClass} · ${selectedChapter}.`, 'success');
     }
 
     // Clear input & return to questions list

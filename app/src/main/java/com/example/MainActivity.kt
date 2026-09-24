@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
         ViewGroup.LayoutParams.MATCH_PARENT
       )
 
+      setLayerType(View.LAYER_TYPE_HARDWARE, null)
+      overScrollMode = View.OVER_SCROLL_NEVER
+
       settings.apply {
         javaScriptEnabled = true
         domStorageEnabled = true

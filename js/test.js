@@ -153,7 +153,6 @@ window.reloadTestHistoryForUser = reloadTestHistoryForUser;
 function renderTestHome() {
   const container = document.getElementById('test-cards-list');
   const recentContainer = document.getElementById('test-recent-banner');
-  if (!container) return;
 
   // Always load saved result for currently active user
   loadSavedTestResult();
@@ -210,6 +209,8 @@ function renderTestHome() {
     if (activeSubjectFilter === 'all') return true;
     return (t.subject || '').toLowerCase() === activeSubjectFilter.toLowerCase();
   });
+
+  if (!container) return;
 
   if (allAvailable.length === 0) {
     container.innerHTML = `

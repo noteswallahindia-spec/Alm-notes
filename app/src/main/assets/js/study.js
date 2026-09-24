@@ -334,10 +334,8 @@ function openChapterDetail(subjectId, chapterId) {
  */
 
 /**
- * Handle "Read" Action -> Opens e-book link directly in browser (Chrome).
+ * Handle "Read" Action -> Opens e-book link directly in external Chrome browser page.
  * Strictly no ad required.
- * If stream-specific (11/12 Science/Arts/Commerce), matches that stream's books.
- * If an e-book link is missing/empty, shows a clear message instead of breaking.
  * @param {Object} chapter 
  */
 function handleReadChapter(chapter) {
@@ -356,17 +354,20 @@ function handleReadChapter(chapter) {
     return;
   }
 
-  // Open e-book directly in browser / Chrome
+  if (typeof showToast === 'function') {
+    showToast('Opening NCERT E-book in Chrome...', 'info');
+  }
+
+  // Open e-book directly in Chrome / external browser page
   try {
-    const win = window.open(ebookUrl, '_blank', 'noopener,noreferrer');
-    if (!win) {
-      window.location.href = ebookUrl;
-    }
-    if (typeof showToast === 'function') {
-      showToast(`Opening NCERT textbook for ${chapter.title || 'Chapter'}...`, 'info');
-    }
+    const a = document.createElement('a');
+    a.href = ebookUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } catch (err) {
-    console.error('Error opening e-book URL:', err);
     window.location.href = ebookUrl;
   }
 }
@@ -674,132 +675,60 @@ function syncCustomChaptersToMemory() {
 window.syncStudyWithCustomChapters = syncCustomChaptersToMemory;
 
 /**
- * Toggle Fullscreen mode for In-App Pro Notes Sheet
- */
-function toggleProNotesFullscreen() {
-  const sheet = document.getElementById('pro-notes-sheet-container') || document.querySelector('.pro-notes-viewer-sheet');
-  const btnIcon = document.getElementById('btn-viewer-fullscreen-icon');
-  const pdfToolIcon = document.getElementById('pdf-fullscreen-icon');
-  if (!sheet) return;
-
-  const isFull = sheet.classList.toggle('fullscreen-mode');
-  if (btnIcon) {
-    btnIcon.className = isFull ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
-  }
-  if (pdfToolIcon) {
-    pdfToolIcon.className = isFull ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
-  }
-  if (typeof showToast === 'function') {
-    showToast(isFull ? 'Fullscreen In-App Reader' : 'Standard View', 'info');
-  }
-}
-
-/**
- * Switch view mode between In-App PDF and Topper Summary
- * @param {'pdf' | 'summary'} mode 
- */
-function switchProNotesViewMode(mode) {
-  currentProNotesMode = mode;
-  const tabPdf = document.getElementById('tab-btn-pdf');
-  const tabSummary = document.getElementById('tab-btn-summary');
-
-  if (tabPdf) tabPdf.classList.toggle('active', mode === 'pdf');
-  if (tabSummary) tabSummary.classList.toggle('active', mode === 'summary');
-
-  if (activeProNotesChapter) {
-    renderProNotesViewerBody(activeProNotesChapter, mode);
-  }
-}
-
-/**
- * Render the Pro Notes body inside the app modal
+ * Render the Pro Notes body: ONLY the uploaded note in clean full screen.
+ * Strictly no save, no download, no clutter.
  * @param {Object} chapter 
- * @param {'pdf' | 'summary'} mode 
  */
-function renderProNotesViewerBody(chapter, mode) {
+function renderProNotesViewerBody(chapter) {
   const bodyEl = document.getElementById('pro-notes-viewer-body');
   if (!bodyEl) return;
 
   const rawPdfUrl = (chapter.proNotesUrl || chapter.pro_notes_url || '').trim();
   const customText = (chapter.proNotesText || chapter.pro_notes_text || '').trim();
-  const richContent = chapter.proNotesContent || '';
 
-  if (mode === 'pdf' && rawPdfUrl) {
+  // If PDF was uploaded: show full-screen embedded PDF (no save button, no download button)
+  if (rawPdfUrl) {
     const embedUrl = formatPdfEmbedUrl(rawPdfUrl);
     bodyEl.innerHTML = `
-      <div class="in-app-pdf-wrapper">
-        <div class="in-app-pdf-toolbar">
-          <div class="pdf-toolbar-info">
-            <span class="pdf-status-badge"><i class="fa-solid fa-file-pdf"></i> In-App Reader</span>
-            <span class="pdf-live-indicator"><i class="fa-solid fa-circle"></i> Ready</span>
-          </div>
-          <div class="pdf-toolbar-actions">
-            <button type="button" class="btn-pdf-tool" onclick="toggleProNotesFullscreen()" title="Fullscreen">
-              <i class="fa-solid fa-expand" id="pdf-fullscreen-icon"></i>
-              <span>Fullscreen</span>
-            </button>
-            <a href="${rawPdfUrl}" target="_blank" rel="noopener noreferrer" class="btn-pdf-tool" title="Open / Download PDF">
-              <i class="fa-solid fa-download"></i>
-              <span>Save</span>
-            </a>
-          </div>
-        </div>
-        <div class="in-app-pdf-frame-container">
-          <iframe 
-            src="${embedUrl}" 
-            class="in-app-pdf-frame" 
-            allowfullscreen 
-            title="${chapter.title} Pro Notes PDF">
-          </iframe>
+      <div class="pronotes-fullscreen-pdf-box">
+        <iframe 
+          src="${embedUrl}" 
+          class="pronotes-fullscreen-iframe" 
+          allowfullscreen 
+          title="${chapter.title || 'Pro Notes'} PDF">
+        </iframe>
+      </div>
+    `;
+    return;
+  }
+
+  // If text note was uploaded: show clean full-screen reading text
+  if (customText) {
+    bodyEl.innerHTML = `
+      <div class="pronotes-fullscreen-text-box">
+        <div class="pronotes-text-content">
+          ${escapeStudyHtml(customText)}
         </div>
       </div>
     `;
     return;
   }
 
-  // Otherwise render rich Topper Summary & Key Formulas
-  let summaryHtml = '';
-  if (customText) {
-    summaryHtml = `
-      <div class="pro-notes-section">
-        <h5 class="pro-section-heading"><i class="fa-solid fa-star text-gold"></i> Key Formulas &amp; Exam Summary</h5>
-        <div class="card" style="padding: 16px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color); white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; color: var(--text-main);">
-          ${customText}
-        </div>
-      </div>
-    `;
-  }
-
+  // If no note has been uploaded yet:
   bodyEl.innerHTML = `
-    <div class="pro-notes-header-card">
-      <div class="pro-notes-badge-row">
-        <span class="pro-tag-pill"><i class="fa-solid fa-bolt"></i> Notes Wallah Pro Notes</span>
-        <span class="pro-tag-pill outline"><i class="fa-solid fa-graduation-cap"></i> Topper's Choice</span>
+    <div class="pronotes-fullscreen-empty-box">
+      <div class="pronotes-empty-icon">
+        <i class="fa-solid fa-file-circle-question"></i>
       </div>
-      <h3 class="pro-notes-ch-title">${chapter.title}</h3>
-      <p class="pro-notes-ch-desc">${chapter.description || 'Comprehensive board exam revision notes, key formulas, and exam blueprint.'}</p>
+      <h3 class="pronotes-empty-title">No Pro Notes Uploaded Yet</h3>
+      <p class="pronotes-empty-desc">Pro Notes for <strong>${chapter.title || 'this chapter'}</strong> have not been uploaded by the admin yet.</p>
     </div>
-
-    ${summaryHtml}
-
-    ${richContent ? richContent : `
-      <div class="pro-notes-section">
-        <h5 class="pro-section-heading"><i class="fa-solid fa-lightbulb"></i> Topper Revision Checklist</h5>
-        <div class="card" style="padding: 14px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-          <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8; color: var(--text-main);">
-            <li>Read all NCERT exemplar proofs and solved derivations for <strong>${chapter.title}</strong>.</li>
-            <li>Practice all previous 10-year board questions and numerical problems.</li>
-            <li>Maintain a dedicated pocket notebook for formulas and reaction mechanisms.</li>
-          </ul>
-        </div>
-      </div>
-    `}
   `;
 }
 
 /**
- * Open Pro Notes Viewer Screen / Modal
- * Displays rich topper notes or embedded PDF inside the app.
+ * Open Pro Notes Viewer Screen:
+ * Opens a clean dedicated full page displaying only the uploaded note in full screen (no save, no download).
  * @param {Object} chapter 
  */
 function openProNotesViewer(chapter) {
@@ -829,8 +758,6 @@ function openProNotesViewer(chapter) {
   const viewerModal = document.getElementById('pro-notes-viewer-modal');
   const titleEl = document.getElementById('pro-notes-viewer-title');
   const codeTag = document.getElementById('pro-notes-subject-code');
-  const tabsContainer = document.getElementById('pro-notes-tabs-group');
-  const externalBtn = document.getElementById('pro-notes-external-btn');
 
   if (!viewerModal) return;
 
@@ -839,34 +766,13 @@ function openProNotesViewer(chapter) {
     ? AppState.user.class
     : (typeof currentProfile !== 'undefined' && currentProfile?.class ? currentProfile.class : 'Class 10');
 
-  if (titleEl) titleEl.textContent = `${chapter.title} · Pro Notes`;
+  if (titleEl) titleEl.textContent = chapter.title ? `${chapter.title} · Pro Notes` : 'Pro Notes';
   if (codeTag) {
     codeTag.textContent = subject ? `${subject.name} · Chapter ${chapter.number}` : `${userClass} · Chapter ${chapter.number}`;
   }
 
-  // Check available formats: PDF vs Summary
-  const rawPdfUrl = (chapter.proNotesUrl || chapter.pro_notes_url || '').trim();
-  const hasPdf = Boolean(rawPdfUrl);
-  const hasSummary = Boolean(chapter.proNotesContent || chapter.proNotesText || chapter.pro_notes_text || chapter.description);
-
-  // Configure tab switcher
-  if (tabsContainer) {
-    tabsContainer.style.display = (hasPdf && hasSummary) ? 'inline-flex' : 'none';
-  }
-
-  // We keep externalBtn hidden because user wants "only pro notes open ho app me hi"
-  if (externalBtn) {
-    externalBtn.classList.add('hidden');
-  }
-
-  // Select default tab: if PDF exists, open In-App PDF; otherwise Summary
-  currentProNotesMode = hasPdf ? 'pdf' : 'summary';
-  const tabPdf = document.getElementById('tab-btn-pdf');
-  const tabSummary = document.getElementById('tab-btn-summary');
-  if (tabPdf) tabPdf.classList.toggle('active', currentProNotesMode === 'pdf');
-  if (tabSummary) tabSummary.classList.toggle('active', currentProNotesMode === 'summary');
-
-  renderProNotesViewerBody(chapter, currentProNotesMode);
+  // Render only the uploaded note in full screen
+  renderProNotesViewerBody(chapter);
 
   viewerModal.classList.remove('hidden');
   document.body.classList.add('modal-open');
@@ -878,9 +784,17 @@ function openProNotesViewer(chapter) {
 function closeProNotesViewer() {
   const viewerModal = document.getElementById('pro-notes-viewer-modal');
   if (viewerModal) viewerModal.classList.add('hidden');
-  const sheet = document.getElementById('pro-notes-sheet-container') || document.querySelector('.pro-notes-viewer-sheet');
-  if (sheet) sheet.classList.remove('fullscreen-mode');
   document.body.classList.remove('modal-open');
+}
+
+function escapeStudyHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**

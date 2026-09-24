@@ -6,9 +6,13 @@
   <title>Notes Wallah - Your Study Partner</title>
   <meta name="description" content="Education app for Class 9-12 students. Study notes, tests, and learning resources.">
 
-  <!-- Google Fonts: Inter -->
+  <!-- Fast DNS & Preconnect CDN Hints -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Font Awesome 6 CDN -->
@@ -607,15 +611,6 @@
                     <span id="test-start-cta-text">Start Test (10 Questions · 15 Mins)</span>
                   </button>
                 </div>
-              </div>
-
-              <!-- Available Pre-Configured Tests -->
-              <div class="section-header" style="padding: 16px 20px 8px 20px;">
-                <h4 class="section-title">Quick Subject Mocks</h4>
-                <span class="test-count-badge">Ready to Play</span>
-              </div>
-              <div id="test-cards-list" class="test-cards-grid">
-                <!-- Injected dynamically by test.js -->
               </div>
             </div>
 
@@ -1953,6 +1948,11 @@
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="test-form-chapter">Chapter Name / Number *</label>
+                <input type="text" id="test-form-chapter" class="form-input" placeholder="e.g. Chapter 1: Chemical Reactions" required />
+              </div>
+
+              <div class="form-group">
                 <label class="form-label" for="test-form-title">Test Title *</label>
                 <input type="text" id="test-form-title" class="form-input" placeholder="e.g. Chemical Reactions Mastery Test" required />
               </div>
@@ -2026,6 +2026,14 @@
           </div>
 
           <form id="admin-question-form" onsubmit="handleSaveQuestion(event)" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="card form-section-card" style="padding:10px 14px; background:var(--bg-surface);">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+                <span class="admin-item-pill blue" id="q-form-class-badge">Class 10</span>
+                <span class="admin-item-pill" id="q-form-subject-badge">Subject</span>
+                <span class="admin-item-pill gold" id="q-form-chapter-badge">Chapter</span>
+              </div>
+            </div>
+
             <div class="card form-section-card">
               <h4 class="form-section-title"><i class="fa-solid fa-question"></i> Question Text</h4>
               <div class="form-group">
@@ -2091,6 +2099,32 @@
             <div style="flex:1; margin-left:8px;">
               <h3 style="font-size:15px; font-weight:800; margin:0; line-height:1.2;">Bulk Question Importer</h3>
               <span id="admin-bulk-test-title" class="admin-item-pill blue">Mock Test</span>
+            </div>
+          </div>
+
+          <!-- Academic Targeting Card: Class, Subject, Chapter -->
+          <div class="card form-section-card" style="margin-bottom:12px; padding:12px;">
+            <h4 class="form-section-title" style="font-size:13px; margin-bottom:10px;">
+              <i class="fa-solid fa-graduation-cap"></i> Target Class, Subject &amp; Chapter
+            </h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+              <div>
+                <label class="form-label" style="font-size:11px;" for="bulk-form-class">Class *</label>
+                <select id="bulk-form-class" class="form-input" style="padding:7px 10px; font-size:13px;">
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10" selected>Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px;" for="bulk-form-subject">Subject *</label>
+                <input type="text" id="bulk-form-subject" class="form-input" style="padding:7px 10px; font-size:13px;" placeholder="e.g. Science, Maths" required />
+              </div>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;" for="bulk-form-chapter">Chapter Name / Number *</label>
+              <input type="text" id="bulk-form-chapter" class="form-input" style="padding:7px 10px; font-size:13px;" placeholder="e.g. Chapter 1: Chemical Reactions" required />
             </div>
           </div>
 
@@ -2302,61 +2336,22 @@ Ans: C"
       </div>
     </div>
 
-    <!-- PART 8: PRO NOTES VIEWER MODAL -->
-    <div id="pro-notes-viewer-modal" class="app-modal hidden">
-      <div class="modal-backdrop" onclick="closeProNotesViewer()"></div>
-      <div class="modal-sheet pro-notes-viewer-sheet" id="pro-notes-sheet-container">
-        <!-- Top Sticky Header -->
-        <div class="viewer-header">
-          <button type="button" class="btn-viewer-back" onclick="closeProNotesViewer()" title="Back to chapter detail">
-            <i class="fa-solid fa-arrow-left"></i>
-          </button>
-          <div class="viewer-title-group">
-            <span id="pro-notes-subject-code" class="viewer-code-tag">CLASS 10</span>
-            <h4 id="pro-notes-viewer-title" class="viewer-title">Chapter Pro Notes</h4>
-          </div>
-          <div class="viewer-header-actions" style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn-viewer-tool" onclick="toggleProNotesFullscreen()" title="Fullscreen" aria-label="Toggle Fullscreen">
-              <i class="fa-solid fa-expand" id="btn-viewer-fullscreen-icon"></i>
-            </button>
-            <button type="button" class="btn-modal-close" onclick="closeProNotesViewer()" aria-label="Close viewer">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
+    <!-- PART 8: PRO NOTES FULLSCREEN READER PAGE -->
+    <div id="pro-notes-viewer-modal" class="pro-notes-fullscreen-page hidden">
+      <!-- Top Clean Header: Back button + Chapter Title (No save, no download, no clutter) -->
+      <div class="pronotes-page-header">
+        <button type="button" class="btn-pronotes-back" onclick="closeProNotesViewer()" title="Back to chapter detail">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div class="pronotes-header-title-box">
+          <h4 id="pro-notes-viewer-title" class="pronotes-page-title">Chapter Pro Notes</h4>
+          <span id="pro-notes-subject-code" class="pronotes-page-subtitle">Class 10 · Chapter Notes</span>
         </div>
+      </div>
 
-        <!-- Sticky Meta / Actions Strip with View Tabs -->
-        <div class="viewer-action-strip">
-          <div class="pro-unlocked-chip">
-            <i class="fa-solid fa-bolt"></i>
-            <span>Pro Notes</span>
-          </div>
-          <div class="viewer-tabs-group" id="pro-notes-tabs-group" style="display: none;">
-            <button type="button" class="viewer-tab-btn active" id="tab-btn-pdf" onclick="switchProNotesViewMode('pdf')">
-              <i class="fa-solid fa-file-pdf"></i> In-App PDF
-            </button>
-            <button type="button" class="viewer-tab-btn" id="tab-btn-summary" onclick="switchProNotesViewMode('summary')">
-              <i class="fa-solid fa-list-check"></i> Topper Notes
-            </button>
-          </div>
-          <a id="pro-notes-external-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-open-full-link hidden">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span>Open Full Notes</span>
-          </a>
-        </div>
-
-        <!-- Scrollable Pro Notes Body -->
-        <div id="pro-notes-viewer-body" class="viewer-body-scrollable">
-          <!-- Rendered dynamically by study.js -->
-        </div>
-
-        <!-- Sticky Footer -->
-        <div class="viewer-footer">
-          <button type="button" class="btn btn-secondary-outline btn-block" onclick="closeProNotesViewer()">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span>Back to Chapter Detail</span>
-          </button>
-        </div>
+      <!-- 100% Fullscreen Note Container -->
+      <div id="pro-notes-viewer-body" class="pronotes-page-body">
+        <!-- Rendered dynamically by study.js: Only the uploaded note / PDF in full screen -->
       </div>
     </div>
 
