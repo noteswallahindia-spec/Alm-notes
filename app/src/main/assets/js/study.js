@@ -384,8 +384,19 @@ function closeEbookModal() {
 }
 
 /* ==========================================================================
-   PART 8: PRO NOTES ENGINE (DIRECT IN-APP ACCESS)
+   PART 8: PRO NOTES ENGINE & ADMOB CONFIGURATION
    ========================================================================== */
+
+// These IDs are for AdMob. Real ads need Android APK + Google Mobile Ads SDK.
+// Web build only stores config and shows placeholders/mock.
+const ADMOB = (typeof window !== 'undefined' && window.ADMOB) ? window.ADMOB : {
+  appId: "ca-app-pub-9901882669030871~4037033022",
+
+  notesInterstitial: "ca-app-pub-9901882669030871/4288400182",
+  homeBanner: "ca-app-pub-9901882669030871/5711050659",
+  shopBanner: "ca-app-pub-9901882669030871/7619028697",
+  testBanner: "ca-app-pub-9901882669030871/9943965825"
+};
 
 // Internal state tracking for the active viewer session
 let currentAdChapter = null;
@@ -396,7 +407,7 @@ let activeProNotesChapter = null;
 
 /**
  * Handle "Pro Notes" Button Click
- * Opens Pro Notes directly inside the app!
+ * User requirement: "1) Pro Notes dabane par pehle 20 second ka full screen ad, phir PDF app ke andar khole"
  * @param {Object} chapter 
  */
 function handleProNotesClick(chapter) {
@@ -410,113 +421,152 @@ function handleProNotesClick(chapter) {
     return;
   }
   activeProNotesChapter = chapter;
-  openProNotesViewer(chapter);
+  showProNotesAd(chapter);
 }
 
 /**
- * Starts the Pro Notes Ad Gate flow:
- * 1) Displays the clean loading interstitial ("Loading Pro Notes", "Please wait a moment")
- * 2) Transitions smoothly to the rewarded ad modal
+ * Starts the 20-second Full Screen Interstitial / Rewarded Ad flow:
+ * Wired to ADMOB.notesInterstitial
+ * AdMob App ID: ca-app-pub-9901882669030871~4037033022
+ * 1) Opens full-screen ad modal
+ * 2) Immediately runs 20s live countdown with progress bar (keeps mock/timer behavior until native SDK exists)
+ * 3) Automatically opens Pro Notes PDF inside app when finished
  * @param {Object} chapter 
  */
 function showProNotesAd(chapter) {
   currentAdChapter = chapter;
-  resetAdGateState();
+  activeProNotesChapter = chapter;
+
+  // Wired to AdMob Interstitial: ADMOB.notesInterstitial
+  // AdMob App ID: ADMOB.appId ("ca-app-pub-9901882669030871~4037033022")
+  const adUnitId = ADMOB.notesInterstitial;
 
   const adModal = document.getElementById('ad-gate-modal');
-  const loadingPhase = document.getElementById('ad-interstitial-loading');
-  const rewardedPhase = document.getElementById('ad-rewarded-phase');
+  if (!adModal) {
+    openProNotesViewer(chapter);
+    return;
+  }
 
-  if (!adModal) return;
+  // Ensure slot has AdMob attributes
+  adModal.setAttribute('data-ad-unit-id', adUnitId);
+  adModal.setAttribute('data-ad-app-id', ADMOB.appId);
 
-  // Show Loading Interstitial phase first
-  if (loadingPhase) loadingPhase.classList.remove('hidden');
-  if (rewardedPhase) rewardedPhase.classList.add('hidden');
   adModal.classList.remove('hidden');
   document.body.classList.add('modal-open');
 
-  // Smoothly transition from interstitial to rewarded ad card
-  setTimeout(() => {
-    if (loadingPhase) loadingPhase.classList.add('hidden');
-    if (rewardedPhase) rewardedPhase.classList.remove('hidden');
-  }, 400);
+  // Keep mock/timer behavior for notes ad until native SDK exists
+  start20sRewardedAdCountdown();
 }
 
 /**
- * Reset Ad Gate UI to initial un-watched state
+ * Immediately starts the 20-second countdown with progress bar & automatic unlock
  */
-function resetAdGateState() {
+function start20sRewardedAdCountdown() {
   if (adCountdownTimer) {
     clearInterval(adCountdownTimer);
     adCountdownTimer = null;
   }
-  isAdWatching = false;
-
-  const watchBtn = document.getElementById('ad-watch-btn');
-  const runningBtn = document.getElementById('ad-running-btn');
-  const continueBtn = document.getElementById('ad-continue-btn');
-  const progressWrapper = document.getElementById('ad-progress-wrapper');
-  const progressFill = document.getElementById('ad-progress-fill');
-  const countdownText = document.getElementById('ad-timer-countdown');
-  const errorBox = document.getElementById('ad-error-container');
-
-  if (watchBtn) watchBtn.classList.remove('hidden');
-  if (runningBtn) runningBtn.classList.add('hidden');
-  if (continueBtn) continueBtn.classList.add('hidden');
-  if (progressWrapper) progressWrapper.classList.add('hidden');
-  if (progressFill) progressFill.style.width = '0%';
-  if (countdownText) countdownText.textContent = '5s';
-  if (errorBox) errorBox.classList.add('hidden');
-}
-
-/**
- * User taps "Watch" button:
- * Starts the 5-second progress mock rewarded ad.
- */
-function startRewardedAdWatch() {
-  if (isAdWatching) return;
   isAdWatching = true;
 
-  const watchBtn = document.getElementById('ad-watch-btn');
-  const runningBtn = document.getElementById('ad-running-btn');
-  const runningText = document.getElementById('ad-running-text');
-  const progressWrapper = document.getElementById('ad-progress-wrapper');
+  const timerBadge = document.getElementById('ad-timer-countdown');
+  const secondsDisplay = document.getElementById('ad-countdown-seconds');
   const progressFill = document.getElementById('ad-progress-fill');
-  const countdownText = document.getElementById('ad-timer-countdown');
+  const unlockLabel = document.getElementById('ad-unlock-label');
+  const statusPill = document.getElementById('ad-status-pill');
+  const continueContainer = document.getElementById('ad-continue-container');
+  const closeBtn = document.getElementById('btn-ad-close');
 
-  if (watchBtn) watchBtn.classList.add('hidden');
-  if (runningBtn) runningBtn.classList.remove('hidden');
-  if (progressWrapper) progressWrapper.classList.remove('hidden');
+  if (continueContainer) continueContainer.classList.add('hidden');
+  if (statusPill) {
+    statusPill.textContent = 'Ad 20s';
+    statusPill.className = 'ad-status-pill';
+  }
+  if (closeBtn) {
+    closeBtn.classList.add('ad-close-locked');
+    closeBtn.title = 'Reward in 20s';
+  }
 
-  let secondsLeft = 5;
-  if (countdownText) countdownText.textContent = `${secondsLeft}s`;
-  if (runningText) runningText.textContent = `Playing Sponsor Message (${secondsLeft}s)...`;
+  let totalDurationMs = 20000; // Exact 20 seconds
+  let startTime = Date.now();
+  window.currentAdRemainingSeconds = 20;
+
+  if (timerBadge) timerBadge.textContent = '20s';
+  if (secondsDisplay) secondsDisplay.textContent = '20s';
   if (progressFill) progressFill.style.width = '0%';
-
-  const startTime = Date.now();
-  const totalDurationMs = 5000;
+  if (unlockLabel) {
+    unlockLabel.innerHTML = '<i class="fa-solid fa-unlock-keyhole"></i> Opening Pro Notes PDF in <strong id="ad-countdown-seconds">20s</strong>...';
+  }
 
   adCountdownTimer = setInterval(() => {
     const elapsed = Date.now() - startTime;
     const pct = Math.min(100, Math.round((elapsed / totalDurationMs) * 100));
     const remaining = Math.max(0, Math.ceil((totalDurationMs - elapsed) / 1000));
+    window.currentAdRemainingSeconds = remaining;
 
     if (progressFill) progressFill.style.width = `${pct}%`;
-    if (countdownText) countdownText.textContent = `${remaining}s`;
-    if (runningText) runningText.textContent = `Playing Sponsor Message (${remaining}s)...`;
+    if (timerBadge) timerBadge.textContent = `${remaining}s`;
+    const curSec = document.getElementById('ad-countdown-seconds');
+    if (curSec) curSec.textContent = `${remaining}s`;
 
     if (elapsed >= totalDurationMs) {
       clearInterval(adCountdownTimer);
       adCountdownTimer = null;
       isAdWatching = false;
+      window.currentAdRemainingSeconds = 0;
 
-      // Ad completed: reveal Continue button
-      if (runningBtn) runningBtn.classList.add('hidden');
-      const continueBtn = document.getElementById('ad-continue-btn');
-      if (continueBtn) continueBtn.classList.remove('hidden');
-      if (countdownText) countdownText.textContent = 'Ready';
+      if (progressFill) progressFill.style.width = '100%';
+      if (timerBadge) timerBadge.textContent = 'Ready ✓';
+      if (statusPill) {
+        statusPill.textContent = 'Granted ✓';
+        statusPill.className = 'ad-status-pill completed';
+      }
+      if (unlockLabel) {
+        unlockLabel.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#10B981;"></i> <strong>Reward Granted!</strong> Opening Pro Notes PDF...';
+      }
+      if (continueContainer) continueContainer.classList.remove('hidden');
+      if (closeBtn) {
+        closeBtn.classList.remove('ad-close-locked');
+        closeBtn.title = 'Close & open PDF';
+      }
+
+      // Automatically transition to the in-app Pro Notes PDF viewer
+      setTimeout(() => {
+        onAdRewarded(currentAdChapter);
+      }, 700);
     }
   }, 100);
+}
+
+/**
+ * Handle clicking top close button in full screen ad
+ */
+function handleAdCloseClick() {
+  if (!isAdWatching) {
+    closeAdGateModal();
+    return;
+  }
+  const remaining = window.currentAdRemainingSeconds || 0;
+  if (remaining > 0) {
+    if (typeof showToast === 'function') {
+      showToast(`Ad is running: ${remaining}s remaining to unlock PDF.`, 'info');
+    }
+  } else {
+    onAdRewarded(currentAdChapter);
+  }
+}
+
+/**
+ * Handle clicking modal backdrop
+ */
+function handleAdBackdropClick() {
+  const remaining = window.currentAdRemainingSeconds || 0;
+  if (remaining > 0) {
+    if (typeof showToast === 'function') {
+      showToast(`Please wait ${remaining}s to unlock your Pro Notes PDF.`, 'info');
+    }
+  } else {
+    closeAdGateModal();
+  }
 }
 
 /**
@@ -528,53 +578,16 @@ function onAdContinueClick() {
 
 /**
  * --- REAL ADMOB REWARDED CALLBACK INTEGRATION POINT ---
- * This callback is invoked when the rewarded ad completes successfully.
- * Opens the Pro Notes viewer for the requested chapter.
+ * This callback is invoked when the 20s rewarded ad completes.
+ * Opens the Pro Notes PDF viewer inside the app in 100% full screen.
  * @param {Object} chapter 
  */
 function onAdRewarded(chapter) {
   closeAdGateModal();
-  const targetChapter = chapter || currentAdChapter;
-  openProNotesViewer(targetChapter);
-}
-
-/**
- * --- REAL ADMOB AD FAILED CALLBACK INTEGRATION POINT ---
- * Invoked if ad playback encounters an error or network drop.
- * Displays a non-blocking error container offering Retry or direct Soft Fallback.
- * @param {Object} chapter 
- * @param {string} [errorReason] 
- */
-function onAdFailed(chapter, errorReason) {
-  if (adCountdownTimer) {
-    clearInterval(adCountdownTimer);
-    adCountdownTimer = null;
+  const targetChapter = chapter || currentAdChapter || activeProNotesChapter;
+  if (targetChapter) {
+    openProNotesViewer(targetChapter);
   }
-  isAdWatching = false;
-
-  const errorBox = document.getElementById('ad-error-container');
-  const watchBtn = document.getElementById('ad-watch-btn');
-  const runningBtn = document.getElementById('ad-running-btn');
-
-  if (watchBtn) watchBtn.classList.add('hidden');
-  if (runningBtn) runningBtn.classList.add('hidden');
-  if (errorBox) errorBox.classList.remove('hidden');
-
-  console.warn('AdMob Rewarded Ad failed:', errorReason || 'Unknown error');
-}
-
-/**
- * Retry loading the ad
- */
-function retryProNotesAd() {
-  resetAdGateState();
-}
-
-/**
- * Soft fallback allowing user to access Pro Notes if an ad fails
- */
-function softFallbackToProNotes() {
-  onAdRewarded(currentAdChapter);
 }
 
 /**
@@ -586,6 +599,10 @@ function simulateAdSkip() {
     adCountdownTimer = null;
   }
   isAdWatching = false;
+  window.currentAdRemainingSeconds = 0;
+  if (typeof showToast === 'function') {
+    showToast('Ad skipped (Test Mode). Unlocking Pro Notes...', 'info');
+  }
   onAdRewarded(currentAdChapter);
 }
 
@@ -598,11 +615,29 @@ function closeAdGateModal() {
     adCountdownTimer = null;
   }
   isAdWatching = false;
+  window.currentAdRemainingSeconds = 0;
 
   const adModal = document.getElementById('ad-gate-modal');
   if (adModal) adModal.classList.add('hidden');
   document.body.classList.remove('modal-open');
 }
+
+/**
+ * Global Handler for Banner & Interstitial Ad Clicks
+ * @param {string} placement 
+ */
+function handleAdClick(placement) {
+  let adUnitId = '';
+  if (placement === 'home_bottom_banner') adUnitId = (typeof ADMOB !== 'undefined') ? ADMOB.homeBanner : '';
+  else if (placement === 'shop_top_banner') adUnitId = (typeof ADMOB !== 'undefined') ? ADMOB.shopBanner : '';
+  else if (placement === 'test_bottom_banner') adUnitId = (typeof ADMOB !== 'undefined') ? ADMOB.testBanner : '';
+  else if (placement === 'pronotes_interstitial_install') adUnitId = (typeof ADMOB !== 'undefined') ? ADMOB.notesInterstitial : '';
+
+  if (typeof showToast === 'function') {
+    showToast(adUnitId ? `AdMob Unit: ${adUnitId}` : 'Opening sponsor offer... (Placeholder Ad)', 'info');
+  }
+}
+window.handleAdClick = handleAdClick;
 
 /**
  * Convert URL into an in-app embeddable PDF viewer URL

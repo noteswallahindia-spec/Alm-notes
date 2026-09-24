@@ -347,6 +347,30 @@
                 </div>
               </article>
             </div>
+
+            <!-- 2) HOME BOTTOM BANNER AD -->
+            <div id="ad-home-banner" class="banner-ad-container banner-ad-home" data-ad-unit-id="ca-app-pub-9901882669030871/5711050659" aria-label="Advertisement">
+              <div class="banner-ad-inner">
+                <div class="banner-ad-top-row">
+                  <span class="ad-tag">Ad</span>
+                  <span class="ad-sponsor-label">Sponsored · Learning Partner</span>
+                </div>
+                <div class="banner-ad-main-content">
+                  <div class="banner-ad-icon home-ad-icon">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                  </div>
+                  <div class="banner-ad-text">
+                    <span class="banner-ad-title">Score 95%+ in Board Exams 2026</span>
+                    <span class="banner-ad-desc">CBSE &amp; State Boards · Revision Notes &amp; Solved Sets</span>
+                  </div>
+                  <button type="button" class="btn-ad-cta" onclick="handleAdClick('home_bottom_banner')">
+                    <span>Open</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -612,6 +636,30 @@
                   </button>
                 </div>
               </div>
+
+              <!-- 4) TEST BOTTOM BANNER AD -->
+              <div id="ad-test-banner" class="banner-ad-container banner-ad-test" data-ad-unit-id="ca-app-pub-9901882669030871/9943965825" aria-label="Advertisement">
+                <div class="banner-ad-inner">
+                  <div class="banner-ad-top-row">
+                    <span class="ad-tag">Ad</span>
+                    <span class="ad-sponsor-label">Sponsored · All India Test Series</span>
+                  </div>
+                  <div class="banner-ad-main-content">
+                    <div class="banner-ad-icon test-ad-icon">
+                      <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div class="banner-ad-text">
+                      <span class="banner-ad-title">All India Mock Scholarship Test</span>
+                      <span class="banner-ad-desc">Compete with 50,000+ Students · National Ranking</span>
+                    </div>
+                    <button type="button" class="btn-ad-cta" onclick="handleAdClick('test_bottom_banner')">
+                      <span>Join</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- 2) LIVE MCQ / TEST SCREEN -->
@@ -758,44 +806,38 @@
 
             <!-- 1) SHOP HOME VIEW -->
             <div id="shop-view-home" class="shop-sub-view active">
-              <!-- Top Banner Slider / Default Hero -->
-              <div class="shop-hero-wrapper">
-                <!-- Live Banner Slider (Shown when active shop_banners exist) -->
-                <div id="shop-banner-slider-container" class="shop-banner-slider-container hidden">
-                  <div id="shop-banner-slider-track" class="shop-banner-slider-track">
-                    <!-- Slides injected dynamically by shop.js -->
-                  </div>
-                  <!-- Admin shortcut pill on slider -->
-                  <button type="button" id="shop-admin-slider-pill" class="btn-shop-admin-pill slider-admin-pill hidden" onclick="openShopAdminDashboard()" title="Access Shop Admin">
-                    <i class="fa-solid fa-shield-halved"></i>
-                    <span>Admin</span>
-                  </button>
-                  <!-- Dots Indicator -->
-                  <div id="shop-banner-dots" class="shop-banner-dots">
-                    <!-- Injected by shop.js -->
-                  </div>
-                </div>
-
-                <!-- Fallback Default Hero (Shown if no active banners) -->
-                <div id="shop-default-hero" class="card shop-hero-card">
-                  <div class="shop-hero-top-row">
-                    <div class="shop-hero-tag">
-                      <i class="fa-solid fa-bag-shopping"></i>
-                      <span>Notes Wallah Shop</span>
+              <!-- 3) SHOP TOP BANNER AD (Replaces old shop banner) -->
+              <div id="ad-shop-banner" class="banner-ad-container banner-ad-shop-top" data-ad-unit-id="ca-app-pub-9901882669030871/7619028697" aria-label="Advertisement">
+                <div class="banner-ad-inner">
+                  <div class="banner-ad-top-row">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span class="ad-tag">Ad</span>
+                      <span class="ad-sponsor-label">Sponsored · Student Deals</span>
                     </div>
                     <button type="button" id="shop-admin-hero-pill" class="btn-shop-admin-pill hidden" onclick="openShopAdminDashboard()" title="Access Shop Admin">
                       <i class="fa-solid fa-shield-halved"></i>
-                      <span>Admin Panel</span>
+                      <span>Admin</span>
                     </button>
                   </div>
-                  <h3 class="shop-hero-title">Study Smart · Shop Smart</h3>
-                  <p class="shop-hero-subtitle">Books · T-Shirts · Cups & Mugs · Stationery · Accessories</p>
-                  <div class="shop-hero-badge-row">
-                    <span class="hero-sub-pill"><i class="fa-solid fa-truck-fast"></i> Marketplace Direct</span>
-                    <span class="hero-sub-pill"><i class="fa-solid fa-shield-halved"></i> 100% Genuine</span>
+                  <div class="banner-ad-main-content">
+                    <div class="banner-ad-icon shop-ad-icon">
+                      <i class="fa-solid fa-tags"></i>
+                    </div>
+                    <div class="banner-ad-text">
+                      <span class="banner-ad-title">Study Kits, Pens &amp; Books 50% Off</span>
+                      <span class="banner-ad-desc">Curated Exam Stationery · Free Home Delivery</span>
+                    </div>
+                    <button type="button" class="btn-ad-cta" onclick="handleAdClick('shop_top_banner')">
+                      <span>Shop</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </button>
                   </div>
                 </div>
               </div>
+
+              <!-- Hidden dummy containers to guarantee shop.js compatibility -->
+              <div id="shop-banner-slider-container" class="hidden" style="display:none !important;"></div>
+              <div id="shop-default-hero" class="hidden" style="display:none !important;"></div>
 
               <!-- Automatic Sale Strip (Festival or Sunday Sale) -->
               <div id="shop-sale-strip" class="shop-sale-strip hidden">
@@ -2230,109 +2272,100 @@ Ans: C"
       </div>
     </div>
 
-    <!-- PART 8: REWARDED AD GATE MODAL -->
-    <div id="ad-gate-modal" class="app-modal hidden">
-      <div class="modal-backdrop" onclick="closeAdGateModal()"></div>
-      <div class="modal-sheet ad-gate-sheet">
-        <div class="modal-drag-handle"></div>
+    <!-- PART 8: 20-SECOND FULL SCREEN REWARDED AD FOR PRO NOTES -->
+    <!-- These IDs are for AdMob. Real ads need Android APK + Google Mobile Ads SDK. -->
+    <!-- Web build only stores config and shows placeholders/mock. -->
+    <!-- AdMob App ID: ca-app-pub-9901882669030871~4037033022 | Interstitial Unit: ca-app-pub-9901882669030871/4288400182 -->
+    <div id="ad-gate-modal" class="app-modal fullscreen-ad-modal hidden" data-ad-unit-id="ca-app-pub-9901882669030871/4288400182" data-ad-app-id="ca-app-pub-9901882669030871~4037033022">
+      <div class="modal-backdrop" onclick="handleAdBackdropClick()"></div>
+      <div class="modal-sheet ad-fullscreen-sheet">
 
-        <!-- 1) Loading Interstitial Phase -->
-        <div id="ad-interstitial-loading" class="ad-interstitial-phase">
-          <div class="ad-spinner-circle">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <!-- Top Status Bar: Ad Tag + Countdown + Close / Skip -->
+        <div class="ad-fullscreen-topbar">
+          <div class="ad-topbar-left">
+            <span class="ad-tag">Ad</span>
+            <span class="ad-sponsor-pill">Sponsored · Partner Offer</span>
           </div>
-          <h4 class="ad-interstitial-title">Loading Pro Notes</h4>
-          <p class="ad-interstitial-sub">Please wait a moment</p>
-        </div>
-
-        <!-- 2) Rewarded Ad Card Phase -->
-        <div id="ad-rewarded-phase" class="ad-rewarded-phase hidden">
-          <div class="modal-header pb-0">
-            <div class="ad-sponsor-badge">
-              <i class="fa-solid fa-bullhorn"></i>
-              <span>Sponsor Message</span>
+          <div class="ad-topbar-right">
+            <div id="ad-timer-badge" class="ad-timer-pill">
+              <i class="fa-solid fa-clock"></i>
+              <span id="ad-timer-countdown">20s</span>
             </div>
-            <button type="button" class="btn-modal-close" onclick="closeAdGateModal()" aria-label="Close ad">
+            <button type="button" id="btn-ad-close" class="btn-fullscreen-ad-close" onclick="handleAdCloseClick()" title="Reward in 20s">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
-
-          <div class="ad-body-content">
-            <!-- Sponsor Banner Graphic -->
-            <div class="ad-sponsor-creative">
-              <div class="ad-creative-badge">Student Education Partner</div>
-              <div class="ad-creative-icon">
-                <i class="fa-solid fa-graduation-cap"></i>
-              </div>
-              <h4 class="ad-creative-title">Notes Wallah Support</h4>
-              <p class="ad-creative-tagline">High-yield revision notes, formula cheat sheets & board exam preparation kits.</p>
-            </div>
-
-            <!-- Ad Callout Message -->
-            <div class="ad-message-box">
-              <h4 class="ad-support-heading">Support Notes Wallah</h4>
-              <p class="ad-support-text">Watch a quick 5-second sponsor message to access Pro Notes for this chapter completely free.</p>
-            </div>
-
-            <!-- Timer and Progress Bar -->
-            <div id="ad-progress-wrapper" class="ad-progress-wrapper hidden">
-              <div class="ad-progress-info">
-                <span class="ad-progress-label"><i class="fa-solid fa-clock"></i> Sponsor Message</span>
-                <span id="ad-timer-countdown" class="ad-countdown-text">5s</span>
-              </div>
-              <div class="ad-progress-track">
-                <div id="ad-progress-fill" class="ad-progress-fill"></div>
-              </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="ad-actions-container">
-              <!-- Initial Watch Button -->
-              <button type="button" id="ad-watch-btn" class="btn btn-primary btn-block btn-ad-main" onclick="startRewardedAdWatch()">
-                <i class="fa-solid fa-play"></i>
-                <span>Watch</span>
-              </button>
-
-              <!-- Progress Running Button (Disabled during ad) -->
-              <button type="button" id="ad-running-btn" class="btn btn-primary btn-block btn-ad-main hidden" disabled>
-                <i class="fa-solid fa-spinner fa-spin"></i>
-                <span id="ad-running-text">Playing Sponsor Message (5s)...</span>
-              </button>
-
-              <!-- Completed Continue Button -->
-              <button type="button" id="ad-continue-btn" class="btn btn-success-action btn-block btn-ad-main hidden" onclick="onAdContinueClick()">
-                <i class="fa-solid fa-circle-check"></i>
-                <span>Continue</span>
-              </button>
-
-              <!-- Optional test skip button for testing/evaluation -->
-              <button type="button" class="btn-skip-test" onclick="simulateAdSkip()">
-                <i class="fa-solid fa-forward"></i>
-                <span>Skip (Test Mode)</span>
-              </button>
-            </div>
-
-            <!-- Ad Failed / Error State (Soft Fallback) -->
-            <div id="ad-error-container" class="ad-error-box hidden">
-              <div class="ad-error-row">
-                <i class="fa-solid fa-circle-exclamation"></i>
-                <div>
-                  <h6>Ad Could Not Load</h6>
-                  <p>Network connectivity issue or ad inventory temporarily unavailable.</p>
-                </div>
-              </div>
-              <div class="ad-error-actions">
-                <button type="button" class="btn btn-secondary-outline btn-sm" onclick="retryProNotesAd()">
-                  <i class="fa-solid fa-rotate-right"></i> Retry
-                </button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="softFallbackToProNotes()">
-                  <span>Continue to Pro Notes</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
         </div>
+
+        <!-- Fullscreen Ad Creative Container -->
+        <div class="ad-fullscreen-body">
+
+          <!-- Creative Hero Banner -->
+          <div class="ad-hero-showcase">
+            <div class="ad-hero-badge">CBSE &amp; State Boards 2026</div>
+            <div class="ad-hero-graphic">
+              <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <h3 class="ad-hero-title">Notes Wallah Pro Masterclass</h3>
+            <p class="ad-hero-subtitle">High-Yield Revision Sheets · Solved 10-Yr Papers · Expert Video Lessons</p>
+            <div class="ad-rating-strip">
+              <span class="ad-stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></span>
+              <span class="ad-rating-num">4.9</span>
+              <span class="ad-rating-count">(48,000+ Students)</span>
+            </div>
+          </div>
+
+          <!-- Sponsor Benefits Card -->
+          <div class="ad-benefits-card">
+            <h4 class="ad-benefits-heading">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Sponsor Special Offer
+            </h4>
+            <ul class="ad-perks-list">
+              <li><i class="fa-solid fa-circle-check"></i> 100% Chapter-wise Question Banks</li>
+              <li><i class="fa-solid fa-circle-check"></i> Formula Cheat Sheets &amp; Derivations</li>
+              <li><i class="fa-solid fa-circle-check"></i> Unlock Free Offline Pro Notes Access</li>
+            </ul>
+          </div>
+
+          <!-- Sponsor Action Button -->
+          <div class="ad-cta-box">
+            <button type="button" class="btn btn-primary btn-block btn-ad-partner" onclick="handleAdClick('pronotes_interstitial_install')">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              <span>Install &amp; Learn More</span>
+            </button>
+          </div>
+
+          <!-- Bottom Unlock Progress Bar -->
+          <div class="ad-progress-card">
+            <div class="ad-progress-header">
+              <span class="ad-unlock-label" id="ad-unlock-label">
+                <i class="fa-solid fa-unlock-keyhole"></i> Opening Pro Notes PDF in <strong id="ad-countdown-seconds">20s</strong>...
+              </span>
+              <span class="ad-status-pill" id="ad-status-pill">Playing</span>
+            </div>
+            <div class="ad-progress-track">
+              <div id="ad-progress-fill" class="ad-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Action Buttons / Completed Continue Button -->
+          <div id="ad-continue-container" class="ad-continue-box hidden">
+            <button type="button" id="ad-continue-btn" class="btn btn-success-action btn-block" onclick="onAdContinueClick()">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>Reward Granted · Open PDF Now</span>
+            </button>
+          </div>
+
+          <!-- Test Skip / Quick Access for Evaluation -->
+          <div class="ad-skip-row">
+            <button type="button" class="btn-skip-test" onclick="simulateAdSkip()">
+              <i class="fa-solid fa-forward"></i>
+              <span>Skip Ad (Test Mode)</span>
+            </button>
+          </div>
+
+        </div>
+
       </div>
     </div>
 
@@ -2533,6 +2566,7 @@ Ans: C"
 
   <!-- Application Logic Scripts -->
   <script src="js/supabase.js"></script>
+  <script src="js/ads-config.js"></script>
   <script src="js/study-data.js"></script>
   <script src="js/study.js"></script>
   <script src="js/test-data.js"></script>
