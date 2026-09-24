@@ -439,6 +439,9 @@ async function processUserSession(user) {
     if (typeof reloadTestForClass === 'function') {
       reloadTestForClass();
     }
+    if (typeof reloadTestHistoryForUser === 'function') {
+      reloadTestHistoryForUser();
+    }
     showScreen('main-app');
     switchNavTab('home');
   } else {
@@ -667,6 +670,9 @@ async function handleGuestLogin() {
     if (typeof reloadTestForClass === 'function') {
       reloadTestForClass();
     }
+    if (typeof reloadTestHistoryForUser === 'function') {
+      reloadTestHistoryForUser();
+    }
     showScreen('main-app');
     switchNavTab('home');
     showToast('Browsing as Guest. Your progress is saved locally.', 'info');
@@ -745,6 +751,9 @@ function handleDemoLogin() {
   if (typeof reloadTestForClass === 'function') {
     reloadTestForClass();
   }
+  if (typeof reloadTestHistoryForUser === 'function') {
+    reloadTestHistoryForUser();
+  }
   showScreen('main-app');
   switchNavTab('home');
   showToast('Logged in as Demo Student (Aamir Khan)', 'success');
@@ -767,6 +776,11 @@ async function handleLogout() {
   // Clear guest active session (preserves nw_guest_profile class prefs if user comes back)
   localStorage.removeItem('nw_guest_session');
   localStorage.removeItem('nw_local_profile');
+
+  // Clear active test state and recent test banner so it never leaks across accounts
+  if (typeof resetTestStateForLogout === 'function') {
+    resetTestStateForLogout();
+  }
 
   currentUser = null;
   currentProfile = null;

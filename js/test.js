@@ -45,38 +45,107 @@ function showTestSubView(viewId) {
 }
 
 /**
- * Load last saved result from localStorage
- * Rule 4: Guest progress stored locally with nw_guest_ prefix
+ * Helper to get active user ID for test data scoping
+ * Strictly isolates guest and registered user accounts so test results never leak across accounts
+ */
+function getActiveUserId() {
+  const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
+  if (isGuest) return 'guest';
+
+  const user = (typeof AppState !== 'undefined' && AppState.user)
+    ? AppState.user
+    : ((typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile : null);
+
+  if (user && user.id) return String(user.id);
+  if (user && user.email) return String(user.email).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  return 'guest';
+}
+
+function getUserTestStorageKey(type = 'last_result') {
+  const uid = getActiveUserId();
+  if (uid === 'guest') {
+    return `nw_guest_test_${type}`;
+  }
+  return `nw_user_${uid}_test_${type}`;
+}
+
+/**
+ * Load last saved result from localStorage strictly for current logged-in user
  */
 function loadSavedTestResult() {
   try {
-    const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
-    const key = isGuest ? 'nw_guest_last_test_result' : 'noteswallah_last_test_result';
+    const key = getUserTestStorageKey('last_result');
     const saved = localStorage.getItem(key);
     if (saved) {
-      lastTestResult = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      const currentUid = getActiveUserId();
+      if (!parsed.userId || parsed.userId === currentUid) {
+        lastTestResult = parsed;
+      } else {
+        lastTestResult = null;
+      }
     } else {
       lastTestResult = null;
     }
   } catch (e) {
     console.warn('Could not read saved test result from localStorage', e);
+    lastTestResult = null;
   }
 }
 
 /**
- * Save test result to localStorage
- * Rule 4: Guest progress stored locally with nw_guest_ prefix
+ * Save test result to localStorage with strict user ID isolation
  */
 function saveTestResult(result) {
   try {
-    const isGuest = (typeof AppState !== 'undefined' && AppState.isGuest);
-    const key = isGuest ? 'nw_guest_last_test_result' : 'noteswallah_last_test_result';
+    const currentUid = getActiveUserId();
+    result.userId = currentUid;
+    const key = getUserTestStorageKey('last_result');
     localStorage.setItem(key, JSON.stringify(result));
     lastTestResult = result;
+
+    // Record in user's personal test history list
+    const histKey = getUserTestStorageKey('history');
+    const existingHist = localStorage.getItem(histKey);
+    let histList = existingHist ? JSON.parse(existingHist) : [];
+    if (!Array.isArray(histList)) histList = [];
+    histList.unshift(result);
+    if (histList.length > 50) histList = histList.slice(0, 50);
+    localStorage.setItem(histKey, JSON.stringify(histList));
   } catch (e) {
     console.warn('Could not save test result to localStorage', e);
   }
 }
+
+/**
+ * Reset all active test memory when logging out
+ */
+function resetTestStateForLogout() {
+  lastTestResult = null;
+  activeTest = null;
+  currentQuestionIndex = 0;
+  userAnswers = {};
+  if (testTimerInterval) {
+    clearInterval(testTimerInterval);
+    testTimerInterval = null;
+  }
+  const recentContainer = document.getElementById('test-recent-banner');
+  if (recentContainer) {
+    recentContainer.innerHTML = '';
+    recentContainer.classList.add('hidden');
+  }
+}
+
+/**
+ * Reload test state when user logs in or switches account/class
+ */
+function reloadTestHistoryForUser() {
+  loadSavedTestResult();
+  initTestStartFlow(true);
+  renderTestHome();
+}
+window.resetTestStateForLogout = resetTestStateForLogout;
+window.reloadTestHistoryForUser = reloadTestHistoryForUser;
 
 /**
  * Render Test Home with list of tests & recent result banner
@@ -86,11 +155,14 @@ function renderTestHome() {
   const recentContainer = document.getElementById('test-recent-banner');
   if (!container) return;
 
+  // Always load saved result for currently active user
+  loadSavedTestResult();
   initTestStartFlow();
 
-  // 1) Render Recent Result banner if exists
+  // 1) Render Recent Result banner if exists strictly for this user
   if (recentContainer) {
-    if (lastTestResult) {
+    const currentUid = getActiveUserId();
+    if (lastTestResult && (!lastTestResult.userId || lastTestResult.userId === currentUid)) {
       const pct = lastTestResult.percentage;
       const isGood = pct >= 60;
       recentContainer.innerHTML = `
@@ -119,30 +191,41 @@ function renderTestHome() {
     }
   }
 
-  // 2) Filter tests
-  const filtered = TEST_BANK.filter(t => {
+  // 2) Filter tests strictly for logged-in Class
+  let customTestsForClass = [];
+  try {
+    const rawTests = localStorage.getItem('nw_custom_tests');
+    if (rawTests) {
+      const parsed = JSON.parse(rawTests);
+      if (Array.isArray(parsed)) {
+        customTestsForClass = parsed.filter(t => !t.class || t.class === selectedTestClass);
+      }
+    }
+  } catch (e) {}
+
+  const allAvailable = [...customTestsForClass, ...TEST_BANK].filter(t => {
+    if (t.class && t.class !== selectedTestClass) return false;
+    if (!t.class && selectedTestClass !== 'Class 10') return false;
+
     if (activeSubjectFilter === 'all') return true;
-    return t.subject.toLowerCase() === activeSubjectFilter.toLowerCase();
+    return (t.subject || '').toLowerCase() === activeSubjectFilter.toLowerCase();
   });
 
-  if (filtered.length === 0) {
+  if (allAvailable.length === 0) {
     container.innerHTML = `
-      <div class="card" style="padding: 32px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 12px 0;">
-        <div class="empty-icon-circle" style="width: 52px; height: 52px; border-radius: 50%; background: var(--primary-blue-light); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+      <div class="card" style="padding: 24px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0;">
+        <div class="empty-icon-circle" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(43, 109, 239, 0.1); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 20px;">
           <i class="fa-solid fa-clipboard-question"></i>
         </div>
-        <h4 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 4px;">No Tests Found</h4>
-        <p style="font-size: 13px; color: var(--text-secondary); max-width: 260px;">No mock tests match this filter. Try selecting "All Subjects".</p>
-        <button type="button" class="btn btn-secondary-outline btn-sm" onclick="filterTestsBySubject('all')" style="margin-top: 6px; border-radius: var(--radius-full); padding: 8px 18px;">
-          Show All Tests
-        </button>
+        <h4 style="font-size: 15px; font-weight: 700; color: var(--text-main); margin: 0;">Ready for Chapter Mock Tests</h4>
+        <p style="font-size: 12.5px; color: var(--text-secondary); max-width: 280px; margin: 0;">Use the Quick Mock Test Creator above to generate custom chapter tests for ${selectedTestClass}.</p>
       </div>
     `;
     return;
   }
 
   // 3) Render Test Cards
-  container.innerHTML = filtered.map(test => {
+  container.innerHTML = allAvailable.map(test => {
     return `
       <div class="card test-item-card" onclick="startTest('${test.id}')">
         <div class="test-card-header">
@@ -204,8 +287,42 @@ function viewRecentResult() {
   showTestSubView('test-view-result');
 }
 
+function shuffleArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function shuffleQuestionOptions(q) {
+  if (!q || !Array.isArray(q.options) || q.options.length < 2) return q;
+  const originalCorrectText = q.options[q.correctIndex || 0];
+  const items = q.options.map((opt, idx) => ({
+    text: opt,
+    isCorrect: idx === (q.correctIndex || 0)
+  }));
+
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+
+  const newOptions = items.map(it => it.text);
+  const newCorrectIndex = items.findIndex(it => it.isCorrect);
+
+  return {
+    ...q,
+    options: newOptions,
+    correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0
+  };
+}
+
 /**
  * Start a Test session (Accepts testId or custom test object)
+ * Randomizes questions & options on every start so no test is identical!
  * @param {string | Object} testOrId 
  */
 function startTest(testOrId) {
@@ -221,7 +338,21 @@ function startTest(testOrId) {
     return;
   }
 
-  activeTest = test;
+  // Clone questions and shuffle both questions and options every time test is started
+  let testQuestions = (test.questions || []).map(q => ({
+    ...q,
+    options: [...q.options]
+  }));
+
+  testQuestions = shuffleArray(testQuestions);
+  testQuestions = testQuestions.map(q => shuffleQuestionOptions(q));
+
+  activeTest = {
+    ...test,
+    questions: testQuestions,
+    questionCount: testQuestions.length
+  };
+
   currentQuestionIndex = 0;
   userAnswers = {};
   timeTotalSec = (test.durationMin || 15) * 60;
@@ -1110,74 +1241,111 @@ function updateTestCalculation() {
 
 /**
  * Build authentic question bank for selected chapters matching exact target count
+ * Incorporates admin-uploaded questions and randomizes question selection on every attempt!
  */
 function buildMockQuestionsForChapters(subject, chapters, targetCount) {
-  const result = [];
-  let qId = 1;
+  let pool = [];
 
-  // High-yield NCERT question builder per chapter
+  // 1) Pull admin-uploaded questions from nw_custom_questions matching this class and chapters
+  try {
+    const raw = localStorage.getItem('nw_custom_questions');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const chapterTitles = chapters.map(c => (c.title || '').toLowerCase());
+        const chapterNumbers = chapters.map(c => String(c.number));
+        const matched = parsed.filter(q => {
+          const matchClass = !q.class || q.class === selectedTestClass;
+          const matchChapter = chapterTitles.some(t => (q.chapter || '').toLowerCase().includes(t)) ||
+                               chapterNumbers.some(n => (q.chapter || '').includes(n));
+          return matchClass && matchChapter;
+        });
+
+        matched.forEach((q, idx) => {
+          const optArr = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
+          const correctLetter = (q.correct_option || 'A').toUpperCase();
+          const letterMap = { A: 0, B: 1, C: 2, D: 3 };
+          pool.push({
+            id: `admin_q_${Date.now()}_${idx}`,
+            text: q.question_text,
+            options: optArr.length >= 2 ? optArr : [q.option_a || 'Option A', q.option_b || 'Option B', q.option_c || 'Option C', q.option_d || 'Option D'],
+            correctIndex: letterMap[correctLetter] !== undefined ? letterMap[correctLetter] : 0,
+            explanation: `Official curriculum question verified for ${selectedTestClass} · ${q.chapter || 'Chapter'}.`
+          });
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read admin custom questions for test:', e);
+  }
+
+  // 2) Generate rich multi-style NCERT questions for each selected chapter
   chapters.forEach((ch, chIdx) => {
     const chTitle = ch.title || `Chapter ${ch.number || chIdx + 1}`;
     const highlights = ch.highlights || [];
-    
-    const chapterQuestions = [
+    const h0 = highlights[0] || `Theoretical foundations of ${chTitle}`;
+    const h1 = highlights[1] || `Analytical problem solving in ${chTitle}`;
+    const h2 = highlights[2] || `Standard relations and constants in ${chTitle}`;
+    const h3 = highlights[3] || `Empirical properties and applications`;
+
+    const dynamicTemplates = [
       {
         text: `In "${chTitle}", which of the following statements represents the core fundamental concept?`,
         options: [
-          highlights[0] ? `It primarily focuses on: ${highlights[0]}` : `It establishes the fundamental theoretical framework of ${chTitle}.`,
-          `It contradicts the standard NCERT curriculum guidelines.`,
-          `It is solely applicable to non-standard lab experiments.`,
-          `None of the standard empirical assertions apply.`
+          `Focuses on: ${h0}`,
+          `Contradicts standard NCERT curriculum guidelines.`,
+          `Only applies to non-standard lab experiments.`,
+          `Assumes zero conservation under standard conditions.`
         ],
         correctIndex: 0,
-        explanation: `As detailed in the NCERT curriculum, ${highlights[0] || chTitle} forms the primary conceptual basis for this chapter.`
+        explanation: `As detailed in the NCERT syllabus, "${h0}" forms the primary conceptual basis for ${chTitle}.`
       },
       {
         text: `Which principle or formula application is central to solving questions in "${chTitle}"?`,
         options: [
-          `Classical approximation without experimental validity`,
-          highlights[1] ? `Application of: ${highlights[1]}` : `Analytical derivation and systematic problem solving in ${chTitle}`,
-          `Random statistical sampling without mathematical formulation`,
-          `Arbitrary constant assumptions`
+          `Arbitrary constant approximation without empirical validation`,
+          `Systematic application of: ${h1}`,
+          `Unchecked dimensional inconsistencies`,
+          `Random statistical sampling`
         ],
         correctIndex: 1,
-        explanation: `${highlights[1] || 'Analytical derivation'} is heavily emphasized in board examinations for ${chTitle}.`
+        explanation: `Application of "${h1}" is heavily emphasized in board examinations for ${chTitle}.`
       },
       {
-        text: `What is a common pitfall that students must avoid in "${chTitle}" board examination questions?`,
+        text: `What is the most common pitfall that students must avoid in "${chTitle}" examination questions?`,
         options: [
-          `Writing proper units and showing intermediate calculation steps`,
+          `Writing proper SI units and stating intermediate steps`,
           `Applying formulas outside their specific boundary conditions`,
           `Drawing labeled schematics or diagrams where applicable`,
           `Stating standard NCERT definitions clearly`
         ],
         correctIndex: 1,
-        explanation: `Applying formulas outside their domain or boundary conditions without verifying assumptions is the most frequent source of mark deductions.`
+        explanation: `Applying formulas outside their domain without checking boundary conditions causes frequent mark deductions.`
       },
       {
         text: `In the context of "${chTitle}", which relation or law is most frequently tested?`,
         options: [
-          highlights[2] ? `The principles underlying: ${highlights[2]}` : `The standard governing law and dimensional consistency of ${chTitle}`,
-          `Inverse proportional deviation under non-standard conditions`,
+          `The principles underlying: ${h2}`,
           `Static qualitative conjecture without quantitative basis`,
-          `None of the above`
+          `Inverse non-standard deviation under zero pressure`,
+          `Arbitrary empirical estimates without proofs`
         ],
         correctIndex: 0,
-        explanation: `Board papers frequently assess ${highlights[2] || 'standard governing relations'} through direct numericals and conceptual assertions.`
+        explanation: `Board papers regularly assess ${h2} through direct numericals and conceptual assertions.`
       },
       {
-        text: `When solving numerical problems or case studies in "${chTitle}", what is the recommended starting step?`,
+        text: `When solving numerical problems or case studies in "${chTitle}", what is the mandatory first step?`,
         options: [
           `Directly guess the approximate final answer`,
-          `Identify given data, write the applicable standard formula, and substitute in SI units`,
-          `Skip formula representation and write only the final value`,
+          `Identify given data, write the applicable standard formula, and convert variables into SI units`,
+          `Skip formula representation and write only the final number`,
           `Substitute values in mixed non-standard units`
         ],
         correctIndex: 1,
-        explanation: `CBSE marking schemes allocate dedicated marks for writing the correct formula and converting variables into consistent SI units.`
+        explanation: `Marking schemes allocate dedicated step marks for writing the formula and consistent SI units.`
       },
       {
-        text: `Assertion (A): Concepts in "${chTitle}" are strictly verified by empirical observations. Reason (R): The NCERT curriculum relies on repeatable scientific experiments and logical deductions.`,
+        text: `Assertion (A): Key mechanisms in "${chTitle}" strictly conform to syllabus conservation laws.\nReason (R): Scientific observations in NCERT are reproducible and validated through experimental proofs.`,
         options: [
           `Both (A) and (R) are true and (R) is the correct explanation of (A).`,
           `Both (A) and (R) are true but (R) is NOT the correct explanation of (A).`,
@@ -1185,87 +1353,118 @@ function buildMockQuestionsForChapters(subject, chapters, targetCount) {
           `(A) is false but (R) is true.`
         ],
         correctIndex: 0,
-        explanation: `Both assertion and reason are factual, and logical deduction is the exact foundational reason for empirical verification in ${chTitle}.`
+        explanation: `Both assertion and reason are factually accurate, and experimental validation explains scientific reproducibility.`
       },
       {
-        text: `Which of the following is an essential requirement for obtaining full credit in descriptive questions of "${chTitle}"?`,
+        text: `Which of the following is essential for securing full credit in descriptive questions for "${chTitle}"?`,
         options: [
-          `Using colloquial language instead of standard scientific/mathematical terminology`,
-          `Precise technical keywords, structured bullet points, and neat diagrams`,
-          `Writing excessively long paragraphs with redundant repetitions`,
-          `Omitting the conclusion or final unit`
+          `Using colloquial language without standard scientific terminology`,
+          `Precise technical keywords, structured bullet points, and neat labeled diagrams`,
+          `Writing long unstructured paragraphs without headings`,
+          `Omitting concluding statements and SI units`
         ],
         correctIndex: 1,
-        explanation: `Examiners reward concise answers containing exact textbook keywords, clear steps, and properly labeled diagrams.`
+        explanation: `Examiners award maximum marks to answers containing precise textbook keywords and clear steps.`
       },
       {
         text: `How does mastering "${chTitle}" support performance in higher-level competitive examinations?`,
         options: [
-          `It has no relevance beyond class school tests`,
-          `It serves as the prerequisite foundation for advanced multi-concept problem solving`,
-          `It only provides historical dates without conceptual application`,
-          `It teaches memorization without logical reasoning`
+          `It only offers rote historical facts with no analytical application`,
+          `It provides foundational analytical prerequisites for multi-concept problem solving`,
+          `It is completely excluded from senior entrance tests`,
+          `It requires memorization without logical reasoning`
         ],
         correctIndex: 1,
-        explanation: `Topics in ${chTitle} build core analytical and problem-solving skills tested across all national competitive examinations.`
+        explanation: `Concepts in ${chTitle} build core analytical foundations tested in all national competitive examinations.`
       },
       {
-        text: `In "${chTitle}", if a question asks for a formal definition, what ensures maximum marks?`,
+        text: `In "${chTitle}", what is crucial when stating a formal textbook definition?`,
         options: [
-          `A general vague statement in student's own colloquial terms`,
-          `Exact NCERT wording or equivalent scientific precision with standard conditions`,
-          `Only giving an example without defining the term`,
-          `Leaving out the key operative words`
+          `A general vague statement in colloquial terms`,
+          `Exact NCERT wording or equivalent scientific precision with governing conditions`,
+          `Only providing a casual example without defining the term`,
+          `Omitting governing physical conditions`
         ],
         correctIndex: 1,
-        explanation: `Scientific and mathematical definitions require explicit inclusion of governing conditions and standard terminology.`
+        explanation: `Formal scientific definitions require specific operational keywords and standard governing conditions.`
       },
       {
-        text: `Which graphical or diagrammatic representation is commonly associated with "${chTitle}"?`,
+        text: `Which graphical or trend representation is characteristic of "${chTitle}"?`,
         options: [
-          `Linear or non-linear trend curves with properly marked axes and origin`,
+          `Linear or non-linear trend curves with properly marked axes, units, and origin`,
           `Unlabeled sketches without directional arrows`,
-          `Arbitrary freehand shapes without scale`,
-          `None of the above`
+          `Arbitrary freehand shapes without scale or units`,
+          `Curves violating energy conservation`
         ],
         correctIndex: 0,
         explanation: `Graphs must clearly indicate physical quantities, scale, units on both axes, and proper trend curvature.`
+      },
+      {
+        text: `For practical or laboratory questions on "${chTitle}", which precaution is most critical?`,
+        options: [
+          `Ensuring zero error calibration and taking repeated readings for precision`,
+          `Recording only a single reading to save time`,
+          `Ignoring environmental temperature and pressure variations`,
+          `Altering observation values to match theoretical expectations`
+        ],
+        correctIndex: 0,
+        explanation: `Taking multiple concordant readings and checking zero error ensures reliable experimental measurements.`
+      },
+      {
+        text: `Under which scenario does the standard theoretical model in "${chTitle}" require special correction?`,
+        options: [
+          `Under extreme boundary conditions or non-ideal states`,
+          `Under standard room temperature and pressure`,
+          `When all conservation laws are strictly followed`,
+          `Never, all models are absolute and universal without limits`
+        ],
+        correctIndex: 0,
+        explanation: `Standard introductory models assume ideal conditions; deviations occur under extreme pressures or non-ideal states.`
       }
     ];
 
-    chapterQuestions.forEach(cq => {
-      if (result.length < targetCount) {
-        result.push({
-          id: qId++,
-          text: cq.text,
-          options: cq.options,
-          correctIndex: cq.correctIndex,
-          explanation: cq.explanation
-        });
-      }
-    });
+    // Shuffle and append to pool
+    shuffleArray(dynamicTemplates).forEach(t => pool.push(t));
   });
 
-  // If more questions needed to reach targetCount (e.g. 100 Qs for full syllabus), generate variations
-  while (result.length < targetCount) {
-    const ch = chapters[result.length % chapters.length];
+  // 3) Shuffle all questions in pool
+  pool = shuffleArray(pool);
+
+  // 4) If pool is smaller than targetCount, generate fresh variation items
+  let counter = 1;
+  while (pool.length < targetCount) {
+    const ch = chapters[(counter - 1) % chapters.length];
     const chTitle = ch.title || `Chapter ${ch.number || 1}`;
-    const num = result.length + 1;
-    result.push({
-      id: num,
-      text: `[Q${num}] For "${chTitle}", evaluate: Which option correctly identifies a key exam property or definition?`,
+    pool.push({
+      text: `[Concept Check] Regarding "${chTitle}", evaluate: Which option correctly identifies an essential CBSE board examination insight?`,
       options: [
-        `Standard property verified by NCERT syllabus guidelines`,
-        `Non-standard arbitrary formulation`,
-        `Empirically disproven hypothesis`,
-        `Outdated historical misconception`
+        `Rigorous application of NCERT syllabus derivations and conceptual axioms`,
+        `Non-standard arbitrary formulation without mathematical backing`,
+        `Outdated historically disproven scientific assumptions`,
+        `Disregard of physical dimensions and conservation principles`
       ],
       correctIndex: 0,
-      explanation: `Detailed in NCERT syllabus for ${chTitle}: standard principles must be observed for valid solutions.`
+      explanation: `Board examinations reward rigorous adherence to NCERT definitions and step-by-step mathematical derivations.`
     });
+    counter++;
   }
 
-  return result.slice(0, targetCount);
+  // Shuffle pool again so order is completely unpredictable!
+  pool = shuffleArray(pool);
+
+  // 5) Format and shuffle options for each selected question
+  const finalQuestions = pool.slice(0, targetCount).map((q, idx) => {
+    const randomizedQ = shuffleQuestionOptions(q);
+    return {
+      id: idx + 1,
+      text: randomizedQ.text,
+      options: randomizedQ.options,
+      correctIndex: randomizedQ.correctIndex,
+      explanation: randomizedQ.explanation || 'Refer to NCERT textbook for detailed derivation.'
+    };
+  });
+
+  return finalQuestions;
 }
 
 /**
