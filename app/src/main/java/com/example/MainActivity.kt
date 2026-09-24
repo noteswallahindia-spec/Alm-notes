@@ -25,20 +25,19 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
-    // Pre-initialize WebView HTTP Code Cache directories so chromium simple_file_enumerator
-    // does not log missing directory errors when inspecting disk cache
+    // Clean up any stale or incomplete HTTP Cache directory so Chromium Simple Cache
+    // initializes cleanly without attempting an invalid version upgrade
     try {
-      val baseDirs = listOfNotNull(
-        cacheDir,
-        filesDir?.parentFile?.let { File(it, "cache") }
-      )
-      for (base in baseDirs) {
-        val codeCacheDir = File(base, "WebView/Default/HTTP Cache/Code Cache")
-        File(codeCacheDir, "js").mkdirs()
-        File(codeCacheDir, "wasm").mkdirs()
+      val defaultCache = File(cacheDir, "WebView/Default/HTTP Cache")
+      if (defaultCache.exists()) {
+        val indexFile = File(defaultCache, "index")
+        val indexDir = File(defaultCache, "index-dir")
+        if (!indexFile.exists() && !indexDir.exists()) {
+          defaultCache.deleteRecursively()
+        }
       }
     } catch (e: Exception) {
-      Log.d("NotesWallah", "Cache directory init: ${e.message}")
+      Log.d("NotesWallah", "Cache cleanup: ${e.message}")
     }
 
     val webView = WebView(this).apply {
@@ -47,7 +46,6 @@ class MainActivity : ComponentActivity() {
         ViewGroup.LayoutParams.MATCH_PARENT
       )
 
-      setLayerType(View.LAYER_TYPE_HARDWARE, null)
       overScrollMode = View.OVER_SCROLL_NEVER
 
       settings.apply {
