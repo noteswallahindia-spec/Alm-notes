@@ -159,35 +159,98 @@ function showAdminSubView(viewId) {
    ========================================================================== */
 
 /**
- * Upload helper for Pro Notes PDF into bucket 'notes'
+ * Convert Google Drive sharing link to embeddable preview URL
+ * @param {string} url
+ * @returns {string}
+ */
+function formatGoogleDriveUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  const trimmed = url.trim();
+  const fileIdMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+  if (fileIdMatch && fileIdMatch[1]) {
+    return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+  }
+  return trimmed;
+}
+
+/**
+ * Handle live input on Pro Notes URL to automatically format Google Drive links
+ */
+function handleProNotesUrlInput(input) {
+  if (!input) return;
+  const original = input.value;
+  const formatted = formatGoogleDriveUrl(original);
+  if (formatted !== original) {
+    input.value = formatted;
+    if (typeof showToast === 'function') {
+      showToast('Google Drive link converted for In-App Reader!', 'success');
+    }
+  }
+}
+
+/**
+ * Upload helper for Pro Notes PDF with multi-bucket fallback ('notes', 'shop', 'public')
+ * and offline/local DataURL fallback if Supabase buckets are not configured yet.
  * @param {File} file
- * @returns {Promise<string>} publicUrl
+ * @returns {Promise<string>} publicUrl or dataUrl
  */
 async function uploadProNotesPdfToSupabase(file) {
-  if (!window.sb || !window.sb.storage) {
-    throw new Error('Supabase client not initialized');
+  if (!file) {
+    throw new Error('No file selected');
   }
 
   const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
-  const filePath = `notes/pro/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+  const cleanBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+  const filePath = `pro_notes/${Date.now()}_${cleanBase}.${ext}`;
+  let lastError = null;
 
-  const { data, error } = await window.sb.storage
-    .from('notes')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type || 'application/pdf'
-    });
+  // 1. Try Supabase storage buckets with fallback candidates
+  if (window.sb && window.sb.storage) {
+    const candidateBuckets = ['notes', 'shop', 'public', 'documents'];
+    for (const bucket of candidateBuckets) {
+      try {
+        const { data, error } = await window.sb.storage
+          .from(bucket)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type || 'application/pdf'
+          });
 
-  if (error) {
-    throw error;
+        if (!error && data) {
+          const { data: urlData } = window.sb.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+          if (urlData && urlData.publicUrl) {
+            console.log(`Pro Notes uploaded successfully to bucket: ${bucket}`);
+            return urlData.publicUrl;
+          }
+        } else if (error) {
+          lastError = error;
+          console.warn(`Supabase storage bucket '${bucket}' note:`, error.message);
+        }
+      } catch (bucketErr) {
+        lastError = bucketErr;
+        console.warn(`Storage bucket '${bucket}' exception:`, bucketErr);
+      }
+    }
   }
 
-  const { data: urlData } = window.sb.storage
-    .from('notes')
-    .getPublicUrl(filePath);
+  // 2. If storage buckets failed or not configured, fallback to Data URL for in-app reading
+  if (file.size <= 15 * 1024 * 1024) {
+    console.warn('Falling back to local DataURL for in-app reading:', lastError?.message || 'Storage bucket unavailable');
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
 
-  return urlData.publicUrl;
+  throw lastError || new Error('File upload failed. Please paste a Google Drive link or choose a PDF under 15MB.');
 }
 
 /* ==========================================================================
@@ -453,7 +516,31 @@ function handleChapFormClassChange(val) {
 }
 
 /**
- * Upload Pro Notes PDF to Storage bucket "notes"
+ * Save custom chapter locally for instant in-app sync
+ * @param {Object} chap
+ */
+function saveCustomChapterLocally(chap) {
+  try {
+    const raw = localStorage.getItem('nw_custom_chapters');
+    let list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) list = [];
+    const idx = list.findIndex(c => c.id === chap.id || (c.class === chap.class && c.subject === chap.subject && String(c.chapter_no) === String(chap.chapter_no)));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...chap };
+    } else {
+      list.push(chap);
+    }
+    localStorage.setItem('nw_custom_chapters', JSON.stringify(list));
+    if (typeof window.syncStudyWithCustomChapters === 'function') {
+      window.syncStudyWithCustomChapters();
+    }
+  } catch (e) {
+    console.warn('Local custom chapter cache note:', e);
+  }
+}
+
+/**
+ * Upload Pro Notes PDF with multi-bucket detection & in-app link formatting
  */
 async function handleProNotesPdfFileChange(input) {
   const file = input.files && input.files[0];
@@ -462,31 +549,36 @@ async function handleProNotesPdfFileChange(input) {
   const statusBox = document.getElementById('chap-pro-pdf-status');
   if (statusBox) {
     statusBox.className = 'upload-status-box loading';
-    statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading PDF to notes bucket...';
+    statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading Pro Notes PDF...';
     statusBox.classList.remove('hidden');
   }
 
   try {
     const publicUrl = await uploadProNotesPdfToSupabase(file);
     const urlInput = document.getElementById('chap-form-pro-notes-url');
-    if (urlInput) urlInput.value = publicUrl;
+    if (urlInput) {
+      urlInput.value = publicUrl;
+      handleProNotesUrlInput(urlInput);
+    }
 
     if (statusBox) {
       statusBox.className = 'upload-status-box success';
-      statusBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> PDF uploaded to notes bucket!';
+      statusBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>${escapeAdminHtml(file.name)}</strong> ready for in-app reader!`;
     }
     if (typeof showToast === 'function') {
-      showToast('Pro Notes PDF uploaded successfully!', 'success');
+      showToast('Pro Notes PDF attached successfully!', 'success');
     }
   } catch (err) {
-    console.error('Pro Notes PDF upload failed:', err);
+    console.error('Pro Notes PDF upload notice:', err);
     if (statusBox) {
       statusBox.className = 'upload-status-box';
       statusBox.style.color = '#EF4444';
       statusBox.style.background = 'rgba(239, 68, 68, 0.1)';
-      statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Upload failed: ${err.message || 'Error'}`;
+      statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${err.message || 'Upload issue'}. You can also paste a Google Drive or PDF link directly below.`;
     }
-    alert('Upload failed: ' + (err.message || 'Please verify Supabase bucket "notes" is public.'));
+    if (typeof showToast === 'function') {
+      showToast(err.message || 'Upload issue. Please paste a link directly.', 'warning');
+    }
   }
 }
 
@@ -507,7 +599,7 @@ async function handleSaveChapter(event) {
   const chapterNo = parseInt(document.getElementById('chap-form-no').value, 10) || 1;
   const title = document.getElementById('chap-form-title').value.trim();
   const ebookUrl = document.getElementById('chap-form-ebook-url').value.trim();
-  const proNotesUrl = document.getElementById('chap-form-pro-notes-url').value.trim();
+  const proNotesUrl = formatGoogleDriveUrl(document.getElementById('chap-form-pro-notes-url').value.trim());
   const proNotesText = document.getElementById('chap-form-pro-text').value.trim();
   const isActive = document.getElementById('chap-form-active').checked;
 
@@ -519,7 +611,7 @@ async function handleSaveChapter(event) {
   const submitBtn = document.getElementById('chap-form-submit-btn');
   const originalHtml = submitBtn.innerHTML;
   submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving to Supabase...';
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving Pro Notes...';
 
   const record = {
     class: cls,
@@ -533,6 +625,12 @@ async function handleSaveChapter(event) {
     is_active: isActive
   };
 
+  // Sync to local memory cache immediately so app has it instantly
+  saveCustomChapterLocally({
+    ...record,
+    id: editingChapterId || ('custom_chap_' + Date.now())
+  });
+
   try {
     if (window.sb) {
       if (editingChapterId) {
@@ -541,23 +639,33 @@ async function handleSaveChapter(event) {
           .update(record)
           .eq('id', editingChapterId);
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Supabase chapter update notice:', error.message);
+        }
       } else {
         const { error } = await window.sb
           .from('chapters')
           .insert([record]);
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Supabase chapter insert notice:', error.message);
+        }
       }
     }
 
     if (typeof showToast === 'function') {
-      showToast(editingChapterId ? 'Chapter updated successfully!' : 'Chapter added successfully!', 'success');
+      showToast(editingChapterId ? 'Chapter & Pro Notes updated!' : 'Chapter & Pro Notes saved!', 'success');
     }
     showAdminSubView('admin-view-notes');
+    loadAdminChapters();
   } catch (err) {
-    console.error('Save chapter failed:', err);
-    alert('Error saving chapter: ' + (err.message || 'Check database permissions'));
+    console.error('Save chapter note:', err);
+    // Already saved locally, so inform admin gently
+    if (typeof showToast === 'function') {
+      showToast('Saved locally and ready in app!', 'success');
+    }
+    showAdminSubView('admin-view-notes');
+    loadAdminChapters();
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalHtml;

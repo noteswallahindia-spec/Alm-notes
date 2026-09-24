@@ -1811,30 +1811,36 @@
               </div>
             </div>
 
-            <!-- Pro Notes (Upload to bucket 'notes' or URL) -->
+            <!-- Pro Notes (Upload PDF or paste Google Drive / Direct Link) -->
             <div class="card form-section-card">
-              <h4 class="form-section-title"><i class="fa-solid fa-file-pdf"></i> Pro Notes PDF &amp; Summary</h4>
-              <p class="form-section-caption">Upload PDF directly to Supabase Storage bucket <code>notes</code> (path: <code>notes/pro/...</code>) or paste URL.</p>
+              <h4 class="form-section-title"><i class="fa-solid fa-file-pdf text-blue"></i> Pro Notes PDF &amp; Summary</h4>
+              <p class="form-section-caption">Upload PDF directly from your device or paste a Google Drive / PDF link to open in the app.</p>
 
-              <input type="file" id="chap-pro-file-input" accept="application/pdf" class="hidden" onchange="handleProNotesPdfFileChange(this)" />
+              <input type="file" id="chap-pro-file-input" accept="application/pdf,.pdf" class="hidden" onchange="handleProNotesPdfFileChange(this)" />
 
               <div class="upload-buttons-row">
                 <button type="button" class="btn btn-secondary-outline btn-block" onclick="document.getElementById('chap-pro-file-input').click()">
                   <i class="fa-solid fa-cloud-arrow-up"></i>
-                  <span>Upload PDF to Supabase 'notes' Bucket</span>
+                  <span>Select &amp; Upload PDF from Device</span>
                 </button>
               </div>
 
               <div id="chap-pro-pdf-status" class="upload-status-box hidden"></div>
 
-              <div class="form-group" style="margin-top: 10px;">
-                <label class="form-label" for="chap-form-pro-notes-url">Pro Notes PDF URL</label>
-                <input type="url" id="chap-form-pro-notes-url" class="form-input" placeholder="https://... (auto-filled on PDF upload)" />
+              <div class="form-group" style="margin-top: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" for="chap-form-pro-notes-url" style="margin: 0;">Pro Notes PDF / Drive URL</label>
+                  <span style="font-size: 11px; color: var(--primary-blue); font-weight: 600;"><i class="fa-brands fa-google-drive"></i> Drive links auto-converted</span>
+                </div>
+                <input type="url" id="chap-form-pro-notes-url" class="form-input" oninput="handleProNotesUrlInput(this)" placeholder="https://... or Google Drive sharing link" />
+                <span class="form-hint" style="display: block; font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
+                  💡 Any Google Drive share link is automatically converted into an embeddable In-App Reader link!
+                </span>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="chap-form-pro-text">Pro Notes Text / Key Concepts Summary (Optional)</label>
-                <textarea id="chap-form-pro-text" class="form-input form-textarea" rows="3" placeholder="Key formulas, reaction cheat sheet, exam tips..."></textarea>
+                <textarea id="chap-form-pro-text" class="form-input form-textarea" rows="3" placeholder="Key formulas, reaction cheat sheet, exam tips, derivations..."></textarea>
               </div>
             </div>
 
@@ -2299,7 +2305,7 @@ Ans: C"
     <!-- PART 8: PRO NOTES VIEWER MODAL -->
     <div id="pro-notes-viewer-modal" class="app-modal hidden">
       <div class="modal-backdrop" onclick="closeProNotesViewer()"></div>
-      <div class="modal-sheet pro-notes-viewer-sheet">
+      <div class="modal-sheet pro-notes-viewer-sheet" id="pro-notes-sheet-container">
         <!-- Top Sticky Header -->
         <div class="viewer-header">
           <button type="button" class="btn-viewer-back" onclick="closeProNotesViewer()" title="Back to chapter detail">
@@ -2309,16 +2315,29 @@ Ans: C"
             <span id="pro-notes-subject-code" class="viewer-code-tag">CLASS 10</span>
             <h4 id="pro-notes-viewer-title" class="viewer-title">Chapter Pro Notes</h4>
           </div>
-          <button type="button" class="btn-modal-close" onclick="closeProNotesViewer()" aria-label="Close viewer">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+          <div class="viewer-header-actions" style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn-viewer-tool" onclick="toggleProNotesFullscreen()" title="Fullscreen" aria-label="Toggle Fullscreen">
+              <i class="fa-solid fa-expand" id="btn-viewer-fullscreen-icon"></i>
+            </button>
+            <button type="button" class="btn-modal-close" onclick="closeProNotesViewer()" aria-label="Close viewer">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
 
-        <!-- Sticky Meta / Actions Strip -->
+        <!-- Sticky Meta / Actions Strip with View Tabs -->
         <div class="viewer-action-strip">
           <div class="pro-unlocked-chip">
-            <i class="fa-solid fa-circle-check"></i>
-            <span>Pro Notes Unlocked</span>
+            <i class="fa-solid fa-bolt"></i>
+            <span>Pro Notes</span>
+          </div>
+          <div class="viewer-tabs-group" id="pro-notes-tabs-group" style="display: none;">
+            <button type="button" class="viewer-tab-btn active" id="tab-btn-pdf" onclick="switchProNotesViewMode('pdf')">
+              <i class="fa-solid fa-file-pdf"></i> In-App PDF
+            </button>
+            <button type="button" class="viewer-tab-btn" id="tab-btn-summary" onclick="switchProNotesViewMode('summary')">
+              <i class="fa-solid fa-list-check"></i> Topper Notes
+            </button>
           </div>
           <a id="pro-notes-external-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-open-full-link hidden">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>

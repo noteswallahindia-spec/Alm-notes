@@ -12,8 +12,40 @@ let currentStudyChapterId = null;
  * Initialize Study module when app starts or Study tab is selected
  */
 function initStudyModule() {
+  if (typeof syncCustomChaptersToMemory === 'function') {
+    syncCustomChaptersToMemory();
+  }
   updateStudyHeaderInfo();
   renderStudySubjects();
+
+  // Asynchronously fetch chapters from Supabase if connected
+  if (window.sb && typeof window.sb.from === 'function') {
+    window.sb.from('chapters').select('*').eq('is_active', true).then(({ data, error }) => {
+      if (!error && Array.isArray(data) && data.length > 0) {
+        try {
+          const raw = localStorage.getItem('nw_custom_chapters');
+          let localList = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(localList)) localList = [];
+          data.forEach(remote => {
+            const idx = localList.findIndex(l => l.id === remote.id || (l.class === remote.class && l.subject === remote.subject && String(l.chapter_no) === String(remote.chapter_no)));
+            if (idx >= 0) {
+              localList[idx] = { ...localList[idx], ...remote };
+            } else {
+              localList.push(remote);
+            }
+          });
+          localStorage.setItem('nw_custom_chapters', JSON.stringify(localList));
+          if (typeof syncCustomChaptersToMemory === 'function') {
+            syncCustomChaptersToMemory();
+          }
+        } catch (e) {
+          console.warn('Supabase chapters sync cache note:', e);
+        }
+      }
+    }).catch(err => {
+      console.warn('Remote chapter fetch note:', err);
+    });
+  }
 }
 
 /**
@@ -351,26 +383,33 @@ function closeEbookModal() {
 }
 
 /* ==========================================================================
-   PART 8: REWARDED AD GATE & PRO NOTES ENGINE
+   PART 8: PRO NOTES ENGINE (DIRECT IN-APP ACCESS)
    ========================================================================== */
 
-// Internal state tracking for the active ad session
+// Internal state tracking for the active viewer session
 let currentAdChapter = null;
 let adCountdownTimer = null;
 let isAdWatching = false;
+let currentProNotesMode = 'pdf';
+let activeProNotesChapter = null;
 
 /**
  * Handle "Pro Notes" Button Click
- * Initiates the rewarded ad gate flow before revealing the Pro Notes content.
- * Every time user opens Pro Notes -> must pass ad flow first.
+ * Opens Pro Notes directly inside the app!
  * @param {Object} chapter 
  */
 function handleProNotesClick(chapter) {
   if (!chapter) {
-    const subject = getSubjectById(currentStudySubjectId);
     chapter = getChapterById(currentStudySubjectId, currentStudyChapterId);
   }
-  showProNotesAd(chapter);
+  if (!chapter) {
+    if (typeof showToast === 'function') {
+      showToast('Please select a chapter first.', 'warning');
+    }
+    return;
+  }
+  activeProNotesChapter = chapter;
+  openProNotesViewer(chapter);
 }
 
 /**
@@ -565,77 +604,269 @@ function closeAdGateModal() {
 }
 
 /**
+ * Convert URL into an in-app embeddable PDF viewer URL
+ * @param {string} url 
+ * @returns {string}
+ */
+function formatPdfEmbedUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const u = url.trim();
+
+  // Google Drive URL format conversion
+  const driveMatch = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || u.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+  if (driveMatch && driveMatch[1]) {
+    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+  }
+
+  // Base64 Data URL or Blob URL (can be embedded directly)
+  if (u.startsWith('data:') || u.startsWith('blob:')) {
+    return u;
+  }
+
+  // Standard web PDF: Use Google Docs Viewer to guarantee mobile/WebView in-app rendering
+  return `https://docs.google.com/viewer?url=${encodeURIComponent(u)}&embedded=true`;
+}
+
+/**
+ * Sync custom chapters from localStorage and Supabase into memory
+ */
+function syncCustomChaptersToMemory() {
+  try {
+    const raw = localStorage.getItem('nw_custom_chapters');
+    if (!raw) return;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length === 0) return;
+
+    const allCatalogs = [
+      typeof CLASS_9_SUBJECTS !== 'undefined' ? CLASS_9_SUBJECTS : [],
+      typeof CLASS_10_SUBJECTS !== 'undefined' ? CLASS_10_SUBJECTS : [],
+      typeof CLASS_11_SCIENCE_SUBJECTS !== 'undefined' ? CLASS_11_SCIENCE_SUBJECTS : [],
+      typeof CLASS_11_COMMERCE_SUBJECTS !== 'undefined' ? CLASS_11_COMMERCE_SUBJECTS : [],
+      typeof CLASS_11_ARTS_SUBJECTS !== 'undefined' ? CLASS_11_ARTS_SUBJECTS : [],
+      typeof CLASS_12_SCIENCE_SUBJECTS !== 'undefined' ? CLASS_12_SCIENCE_SUBJECTS : [],
+      typeof CLASS_12_COMMERCE_SUBJECTS !== 'undefined' ? CLASS_12_COMMERCE_SUBJECTS : [],
+      typeof CLASS_12_ARTS_SUBJECTS !== 'undefined' ? CLASS_12_ARTS_SUBJECTS : []
+    ];
+
+    list.forEach(custom => {
+      allCatalogs.forEach(cat => {
+        cat.forEach(subj => {
+          const matchSubj = (subj.name || '').toLowerCase().includes((custom.subject || '').toLowerCase()) ||
+                            (custom.subject || '').toLowerCase().includes((subj.name || '').toLowerCase());
+          if (matchSubj && subj.chapters) {
+            const ch = subj.chapters.find(c => String(c.number) === String(custom.chapter_no) || c.id === custom.id);
+            if (ch) {
+              if (custom.pro_notes_url) ch.proNotesUrl = custom.pro_notes_url;
+              if (custom.pro_notes_text) ch.proNotesText = custom.pro_notes_text;
+              if (custom.title) ch.title = custom.title;
+              if (custom.ebook_url) ch.ebookUrl = custom.ebook_url;
+            }
+          }
+        });
+      });
+    });
+  } catch (e) {
+    console.warn('syncCustomChaptersToMemory note:', e);
+  }
+}
+
+// Attach to window so admin.js can notify study on change
+window.syncStudyWithCustomChapters = syncCustomChaptersToMemory;
+
+/**
+ * Toggle Fullscreen mode for In-App Pro Notes Sheet
+ */
+function toggleProNotesFullscreen() {
+  const sheet = document.getElementById('pro-notes-sheet-container') || document.querySelector('.pro-notes-viewer-sheet');
+  const btnIcon = document.getElementById('btn-viewer-fullscreen-icon');
+  const pdfToolIcon = document.getElementById('pdf-fullscreen-icon');
+  if (!sheet) return;
+
+  const isFull = sheet.classList.toggle('fullscreen-mode');
+  if (btnIcon) {
+    btnIcon.className = isFull ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+  }
+  if (pdfToolIcon) {
+    pdfToolIcon.className = isFull ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+  }
+  if (typeof showToast === 'function') {
+    showToast(isFull ? 'Fullscreen In-App Reader' : 'Standard View', 'info');
+  }
+}
+
+/**
+ * Switch view mode between In-App PDF and Topper Summary
+ * @param {'pdf' | 'summary'} mode 
+ */
+function switchProNotesViewMode(mode) {
+  currentProNotesMode = mode;
+  const tabPdf = document.getElementById('tab-btn-pdf');
+  const tabSummary = document.getElementById('tab-btn-summary');
+
+  if (tabPdf) tabPdf.classList.toggle('active', mode === 'pdf');
+  if (tabSummary) tabSummary.classList.toggle('active', mode === 'summary');
+
+  if (activeProNotesChapter) {
+    renderProNotesViewerBody(activeProNotesChapter, mode);
+  }
+}
+
+/**
+ * Render the Pro Notes body inside the app modal
+ * @param {Object} chapter 
+ * @param {'pdf' | 'summary'} mode 
+ */
+function renderProNotesViewerBody(chapter, mode) {
+  const bodyEl = document.getElementById('pro-notes-viewer-body');
+  if (!bodyEl) return;
+
+  const rawPdfUrl = (chapter.proNotesUrl || chapter.pro_notes_url || '').trim();
+  const customText = (chapter.proNotesText || chapter.pro_notes_text || '').trim();
+  const richContent = chapter.proNotesContent || '';
+
+  if (mode === 'pdf' && rawPdfUrl) {
+    const embedUrl = formatPdfEmbedUrl(rawPdfUrl);
+    bodyEl.innerHTML = `
+      <div class="in-app-pdf-wrapper">
+        <div class="in-app-pdf-toolbar">
+          <div class="pdf-toolbar-info">
+            <span class="pdf-status-badge"><i class="fa-solid fa-file-pdf"></i> In-App Reader</span>
+            <span class="pdf-live-indicator"><i class="fa-solid fa-circle"></i> Ready</span>
+          </div>
+          <div class="pdf-toolbar-actions">
+            <button type="button" class="btn-pdf-tool" onclick="toggleProNotesFullscreen()" title="Fullscreen">
+              <i class="fa-solid fa-expand" id="pdf-fullscreen-icon"></i>
+              <span>Fullscreen</span>
+            </button>
+            <a href="${rawPdfUrl}" target="_blank" rel="noopener noreferrer" class="btn-pdf-tool" title="Open / Download PDF">
+              <i class="fa-solid fa-download"></i>
+              <span>Save</span>
+            </a>
+          </div>
+        </div>
+        <div class="in-app-pdf-frame-container">
+          <iframe 
+            src="${embedUrl}" 
+            class="in-app-pdf-frame" 
+            allowfullscreen 
+            title="${chapter.title} Pro Notes PDF">
+          </iframe>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Otherwise render rich Topper Summary & Key Formulas
+  let summaryHtml = '';
+  if (customText) {
+    summaryHtml = `
+      <div class="pro-notes-section">
+        <h5 class="pro-section-heading"><i class="fa-solid fa-star text-gold"></i> Key Formulas &amp; Exam Summary</h5>
+        <div class="card" style="padding: 16px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color); white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; color: var(--text-main);">
+          ${customText}
+        </div>
+      </div>
+    `;
+  }
+
+  bodyEl.innerHTML = `
+    <div class="pro-notes-header-card">
+      <div class="pro-notes-badge-row">
+        <span class="pro-tag-pill"><i class="fa-solid fa-bolt"></i> Notes Wallah Pro Notes</span>
+        <span class="pro-tag-pill outline"><i class="fa-solid fa-graduation-cap"></i> Topper's Choice</span>
+      </div>
+      <h3 class="pro-notes-ch-title">${chapter.title}</h3>
+      <p class="pro-notes-ch-desc">${chapter.description || 'Comprehensive board exam revision notes, key formulas, and exam blueprint.'}</p>
+    </div>
+
+    ${summaryHtml}
+
+    ${richContent ? richContent : `
+      <div class="pro-notes-section">
+        <h5 class="pro-section-heading"><i class="fa-solid fa-lightbulb"></i> Topper Revision Checklist</h5>
+        <div class="card" style="padding: 14px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8; color: var(--text-main);">
+            <li>Read all NCERT exemplar proofs and solved derivations for <strong>${chapter.title}</strong>.</li>
+            <li>Practice all previous 10-year board questions and numerical problems.</li>
+            <li>Maintain a dedicated pocket notebook for formulas and reaction mechanisms.</li>
+          </ul>
+        </div>
+      </div>
+    `}
+  `;
+}
+
+/**
  * Open Pro Notes Viewer Screen / Modal
- * Displays rich topper notes, formulas, and high-yield questions for the chapter.
- * Shows friendly empty state if content is not yet available.
+ * Displays rich topper notes or embedded PDF inside the app.
  * @param {Object} chapter 
  */
 function openProNotesViewer(chapter) {
+  if (!chapter) {
+    chapter = getChapterById(currentStudySubjectId, currentStudyChapterId);
+  }
   if (!chapter) return;
+
+  // Sync latest custom chapters from memory
+  syncCustomChaptersToMemory();
+
+  // Check if this chapter has custom local overrides
+  try {
+    const raw = localStorage.getItem('nw_custom_chapters');
+    if (raw) {
+      const customList = JSON.parse(raw);
+      const match = customList.find(c => String(c.chapter_no) === String(chapter.number) || c.id === chapter.id);
+      if (match) {
+        if (match.pro_notes_url) chapter.proNotesUrl = match.pro_notes_url;
+        if (match.pro_notes_text) chapter.proNotesText = match.pro_notes_text;
+      }
+    }
+  } catch (e) {}
+
+  activeProNotesChapter = chapter;
 
   const viewerModal = document.getElementById('pro-notes-viewer-modal');
   const titleEl = document.getElementById('pro-notes-viewer-title');
   const codeTag = document.getElementById('pro-notes-subject-code');
-  const bodyEl = document.getElementById('pro-notes-viewer-body');
+  const tabsContainer = document.getElementById('pro-notes-tabs-group');
   const externalBtn = document.getElementById('pro-notes-external-btn');
 
   if (!viewerModal) return;
 
   const subject = getSubjectById(currentStudySubjectId);
-
   const userClass = (typeof AppState !== 'undefined' && AppState.user && AppState.user.class)
     ? AppState.user.class
     : (typeof currentProfile !== 'undefined' && currentProfile?.class ? currentProfile.class : 'Class 10');
 
-  if (titleEl) titleEl.textContent = `${chapter.title} Pro Notes`;
+  if (titleEl) titleEl.textContent = `${chapter.title} · Pro Notes`;
   if (codeTag) {
     codeTag.textContent = subject ? `${subject.name} · Chapter ${chapter.number}` : `${userClass} · Chapter ${chapter.number}`;
   }
 
-  // If proNotesUrl exists, offer "Open Full Notes" external link
-  if (externalBtn) {
-    if (chapter.proNotesUrl) {
-      externalBtn.href = chapter.proNotesUrl;
-      externalBtn.classList.remove('hidden');
-    } else {
-      externalBtn.classList.add('hidden');
-    }
+  // Check available formats: PDF vs Summary
+  const rawPdfUrl = (chapter.proNotesUrl || chapter.pro_notes_url || '').trim();
+  const hasPdf = Boolean(rawPdfUrl);
+  const hasSummary = Boolean(chapter.proNotesContent || chapter.proNotesText || chapter.pro_notes_text || chapter.description);
+
+  // Configure tab switcher
+  if (tabsContainer) {
+    tabsContainer.style.display = (hasPdf && hasSummary) ? 'inline-flex' : 'none';
   }
 
-  // Render notes body or friendly empty state
-  if (bodyEl) {
-    if (chapter.proNotesContent) {
-      bodyEl.innerHTML = `
-        <div class="pro-notes-header-card">
-          <div class="pro-notes-badge-row">
-            <span class="pro-tag-pill"><i class="fa-solid fa-graduation-cap"></i> Topper's Choice</span>
-            <span class="pro-tag-pill outline"><i class="fa-regular fa-clock"></i> 5-Min Revision</span>
-          </div>
-          <h3 class="pro-notes-ch-title">${chapter.title}</h3>
-          <p class="pro-notes-ch-desc">${chapter.description || 'Comprehensive board exam revision notes and formula cheat sheet.'}</p>
-        </div>
-        ${chapter.proNotesContent}
-      `;
-    } else {
-      // Friendly empty state as required if missing:
-      bodyEl.innerHTML = `
-        <div class="pro-notes-empty-state">
-          <div class="pro-empty-icon-box">
-            <i class="fa-solid fa-file-lines"></i>
-          </div>
-          <h4 class="pro-empty-title">Pro Notes in Editorial Review</h4>
-          <p class="pro-empty-desc">
-            Handwritten topper notes and formula cheat sheets for <strong>${chapter.title}</strong> are being formatted according to the latest CBSE board pattern.
-          </p>
-          ${chapter.ebookUrl ? `
-            <a href="${chapter.ebookUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; text-decoration: none; border-radius: var(--radius-full); padding: 8px 16px;">
-              <i class="fa-solid fa-book-open"></i> Read NCERT Chapter
-            </a>
-          ` : ''}
-        </div>
-      `;
-    }
+  // We keep externalBtn hidden because user wants "only pro notes open ho app me hi"
+  if (externalBtn) {
+    externalBtn.classList.add('hidden');
   }
+
+  // Select default tab: if PDF exists, open In-App PDF; otherwise Summary
+  currentProNotesMode = hasPdf ? 'pdf' : 'summary';
+  const tabPdf = document.getElementById('tab-btn-pdf');
+  const tabSummary = document.getElementById('tab-btn-summary');
+  if (tabPdf) tabPdf.classList.toggle('active', currentProNotesMode === 'pdf');
+  if (tabSummary) tabSummary.classList.toggle('active', currentProNotesMode === 'summary');
+
+  renderProNotesViewerBody(chapter, currentProNotesMode);
 
   viewerModal.classList.remove('hidden');
   document.body.classList.add('modal-open');
@@ -647,6 +878,8 @@ function openProNotesViewer(chapter) {
 function closeProNotesViewer() {
   const viewerModal = document.getElementById('pro-notes-viewer-modal');
   if (viewerModal) viewerModal.classList.add('hidden');
+  const sheet = document.getElementById('pro-notes-sheet-container') || document.querySelector('.pro-notes-viewer-sheet');
+  if (sheet) sheet.classList.remove('fullscreen-mode');
   document.body.classList.remove('modal-open');
 }
 
